@@ -9,19 +9,27 @@ export default function App() {
   const [meals, setMeals] = useState([]);
 
   useEffect(() => {
-    getMeals().then(setMeals);
+    getMeals().then(setMeals).catch(console.error);
   }, []);
 
   const total = meals.reduce((sum, meal) => sum + meal.calories, 0);
 
   async function handleAdd(name, calories) {
-    await addMeal({ name, calories });
-    setMeals(await getMeals());
+    try {
+      await addMeal({ name, calories });
+      setMeals(await getMeals());
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async function handleDelete(id) {
-    await deleteMeal(id);
-    setMeals(await getMeals());
+    try {
+      await deleteMeal(id);
+      setMeals(await getMeals());
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   return (
