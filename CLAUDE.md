@@ -30,11 +30,21 @@ A calorie tracker — the user's summer-long full-stack learning project (see th
 
 Verified end-to-end via Postman: POST → GET → PUT → DELETE all work as expected.
 
-Not done yet: no 404 handling when updating/deleting an unknown id (service methods return `void`, so it silently no-ops); Part B (frontend) hasn't been started.
+**Part B (frontend) is also done and working**, at `frontend/` (sibling to `pom.xml`, inside the same repo) — a Vite/React app: `App.jsx` owns state (`useEffect` load, `reduce` for the daily total), with `Header`, `CalorieSummary`, `MealForm`, `MealList`, and a reusable `FoodItem` component (one per meal, via `.map()`). Styled minimalist/CalAI-MyFitnessPal-inspired with Tailwind v4. `api.js` wraps `GET`/`POST`/`DELETE` (plus `updateMeal` for `PUT`, defined but not wired into the UI yet — edit UI is intentionally deferred). `@CrossOrigin(origins = "http://localhost:5173")` is on `MealEntryController` for this to work.
+
+Two bugs hit and fixed while wiring this up, worth knowing about:
+- CORS: the `@CrossOrigin` annotation above — expected per the roadmap, not a surprise.
+- Jackson: `MealEntry`'s 3-arg constructor was being auto-detected by Jackson as the JSON-deserialization constructor, which broke POST (whose body omits `id` on purpose, since the server assigns it) with `Cannot map 'null' into type 'long'`. Fixed with `@JsonCreator(mode = JsonCreator.Mode.DISABLED)` on that constructor, forcing Jackson back to the no-arg constructor + setters.
+
+Not done yet: no 404 handling when updating/deleting an unknown id (service methods return `void`, so it silently no-ops); no edit/update UI.
+
+**Frontend was originally built in a wrong location** (a sibling directory, `calTracker-frontend`, outside this repo) and then moved into `frontend/` here — that migration is done, the sibling directory no longer exists. Considered nesting it at `src/main/frontend` (the `frontend-maven-plugin` convention for bundling frontend+backend into one deployable jar) but decided against it for now: the roadmap's v3 step deploys backend and frontend separately (Render/Railway + Vercel), so there's no current reason for Maven to know the frontend exists. Revisit if the deploy plan changes — see the note in Commands below.
+
+**Next session:** user is going to read through the frontend component code (`frontend/src/`) after a break and will likely have clarification questions — no code changes expected to be needed going in, just explaining what's there.
 
 ## Commands
 
-Maven wrapper, Windows (PowerShell):
+Backend — Maven wrapper, Windows (PowerShell), run from the repo root:
 
 ```
 .\mvnw.cmd spring-boot:run      # run the app (localhost:8080)
@@ -44,4 +54,11 @@ Maven wrapper, Windows (PowerShell):
 .\mvnw.cmd clean package        # build the jar
 ```
 
-Java 26, Spring Boot 4.1.0. The v1 frontend, when created, will be a separate Vite React app (`npm run dev`, port 5173) — likely in its own directory or sibling repo.
+Frontend — from `frontend/`:
+
+```
+npm install                     # first-time setup / after pulling new deps
+npm run dev                     # run the app (localhost:5173)
+```
+
+Java 26, Spring Boot 4.1.0. Run both dev servers at once for the app to work end-to-end (frontend calls the backend at `localhost:8080`). `frontend/` is a plain sibling folder to `pom.xml` inside this same repo — not wired into the Maven build (no `frontend-maven-plugin`), matching the roadmap's v3 plan to deploy backend and frontend separately (Render/Railway + Vercel) rather than bundle into one jar. Revisit this structure if that deploy plan changes.

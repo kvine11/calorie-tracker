@@ -1,5 +1,6 @@
 package com.example.calTracker.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 
 public class MealEntry {
 
@@ -12,6 +13,11 @@ public class MealEntry {
     public MealEntry() {
     }
 
+    // Jackson would otherwise auto-detect this as the JSON-binding constructor,
+    // and fail on POST bodies that omit "id" (which is intentional — the server
+    // assigns it). Disabling that keeps this constructor for internal Java use
+    // (e.g. seeding sample data) while JSON deserialization uses MealEntry() + setters.
+    @JsonCreator(mode = JsonCreator.Mode.DISABLED)
     public MealEntry(long id, String name, int calories) {
         this.id = id;
         this.name = name;
