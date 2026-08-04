@@ -22,9 +22,15 @@ A calorie tracker — the user's summer-long full-stack learning project (see th
 
 ## Current state
 
-Fresh Spring Initializr skeleton: only `CalTrackerApplication.java` and an empty `application.properties` exist. No controllers, models, or frontend yet.
+**Part A (backend) is done and working.** `pom.xml` uses `spring-boot-starter-webmvc` only (no JPA starter, so the old datasource-conflict concern doesn't apply). Built as controller/service/model:
 
-Note: `pom.xml` includes `spring-boot-starter-data-jpa` even though v1 needs only Spring Web (the roadmap says Spring Web only). With no datasource configured and no embedded DB dependency, JPA auto-configuration will fail at startup — either remove the JPA starter until v2 or expect to deal with datasource config.
+- `model/MealEntry.java` — `id` (long), `name` (String), `calories` (int).
+- `service/MealEntryService.java` — `@Service` holding `List<MealEntry> mealEntries`, seeded with 3 sample meals (ids 1–3) at startup. Ids for new meals are server-assigned via an `AtomicLong idCounter` (starts at 4) — the client never sets an id on POST; it's stamped in `addMealEntry`. `updateMealEntry`/`deleteMealEntry` match by id.
+- `controller/MealEntryController.java` — `@RestController` at `/api/meals`: `GET`, `POST` (`@RequestBody`), `PUT /{id}` (`@RequestBody`, sets the id from the path onto the body before updating — the URL is the source of truth, not the JSON body), `DELETE /{id}`.
+
+Verified end-to-end via Postman: POST → GET → PUT → DELETE all work as expected.
+
+Not done yet: no 404 handling when updating/deleting an unknown id (service methods return `void`, so it silently no-ops); Part B (frontend) hasn't been started.
 
 ## Commands
 
