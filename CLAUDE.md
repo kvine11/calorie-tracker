@@ -6,41 +6,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A calorie tracker — the user's summer-long full-stack learning project (see the Notion "Calorie Tracker — Roadmap" page under Summer Prep). It grows one architectural layer at a time; the standing rule is **add a layer only when you understand the one beneath it**. Every version should be explainable in an interview. Depth over speed — the understanding is the deliverable, not the feature count.
 
-### Version arc (from the Notion roadmap)
+### Version arc (from the Notion roadmap — revised 2026-08-06)
 
-- **v1 (current, Week 4 — Aug 2026):** React frontend + Spring Boot API with **in-memory storage only** — meals live in a `List<MealEntry>` in the backend. No database. Data loss on restart is intentional; it sets up the motivation for v2.
-- **v2 (later):** Swap the in-memory list for Postgres via Spring Data JPA. Only the storage layer changes — the frontend and request loop stay identical.
-- **v3 (later):** Deploy — backend to Render/Railway, frontend to Vercel, hosted Postgres.
-- **v4+ (ongoing):** Dates/history, charts, a second entity (reusable foods or daily goals), users/auth, and a capstone: photo-of-meal → Claude API calorie estimation.
+- **v1 (done):** React frontend + Spring Boot API with in-memory storage — meals lived in a `List<MealEntry>` in the backend, wiped on every restart by design (to motivate v2).
+- **v2 (done):** Swapped the in-memory list for Postgres via Spring Data JPA. Only the storage layer changed — the frontend and request loop stayed identical.
+- **v3–v7 (current batch, before deploy):** a feature-fleshing-out phase, inserted ahead of deployment on purpose so there's more to show on a resume. Ordered by difficulty *for this user specifically* (strong in React already, brand-new to JPA relationships/external APIs), each version leaning on what the previous one just built:
+  1. **v3 — Dates & history**: meals belong to a day; filtered/date-range queries. Gentle extension of single-entity JPA, nothing architecturally new.
+  2. **v4 — Charts**: calories over time. Leans on React (already strong); one new backend aggregation query (`GROUP BY`/`SUM`).
+  3. **v5 — Reusable/commonly-entered foods (2nd entity)**: a `Food` entity related to `MealEntry` (`@ManyToOne`/`@OneToMany`). The real jump in this batch — first multi-entity schema. Also the intended landing spot for v6's API results.
+  4. **v6 — Nutrition API search**: external REST API (e.g. USDA FoodData Central, Nutritionix) to search foods and pull full macros (protein/carbs/fat, not just calories), populating the v5 `Food` entity.
+  5. **v7 — Claude vision image recognition (capstone)**: photo of a meal → Claude API (multimodal) → identified food + estimated macros, wired into the same logging flow as v5/v6. Hardest of the batch; open design question for later — trust Claude's estimate directly, or use it to identify the food and look up precise macros via v6.
+- **v8 (later, was v3):** Deploy — backend to Render/Railway, frontend to Vercel, hosted Postgres. Deliberately pushed later so deploy ships a fleshed-out app, not a bare CRUD demo.
+- **Further down the road (uncommitted):** users/auth — not committed to yet, revisit whenever. Living project — keeps growing after deploy too.
 
-### v1 scope (the current work)
-
-- **Part A (backend):** `MealEntry` model (`id` long, `name` String, `calories` int); a `@RestController` holding a `List<MealEntry>` plus an id counter; endpoints `GET /api/meals`, `POST /api/meals`, `DELETE /api/meals/{id}`. Done when the API works via Postman/curl.
-- **Part B (frontend):** Separate Vite React app (localhost:5173) — form with controlled inputs, meal list via `useEffect` + `.map()`, delete buttons, daily total via `reduce`. CORS is expected on first connection; fix is `@CrossOrigin(origins = "http://localhost:5173")` on the controller.
-
-**Do not add layers ahead of the roadmap** (no database, no repositories/JPA entities, no auth) — pre-building defeats the learning structure. The user is a learner; prefer explaining the why behind code over dumping finished abstractions.
+**Do not add layers ahead of the roadmap** (no auth, no deploy config, and within v3–v7 specifically: don't jump ahead to a later version's concept before the current one is done) — pre-building defeats the learning structure. The user is a learner; prefer explaining the why behind code over dumping finished abstractions. Starting with v2, the user writes the actual feature code themselves (entity annotations, repository/service logic, API integration code, etc.) — the assistant's job is environment setup (installing dependencies, API keys/config, verifying connections) and review/explanation, not writing that code for them. This applies to v3–v7 too, including the nutrition API and Claude vision work — no vibecoding, the user wants to do the heavy lifting.
 
 ## Current state
 
-**Part A (backend) is done and working.** `pom.xml` uses `spring-boot-starter-webmvc` only (no JPA starter, so the old datasource-conflict concern doesn't apply). Built as controller/service/model:
+**v1 (backend + frontend) is done.** `MealEntryController` at `/api/meals`: `GET`, `POST` (`@RequestBody`), `PUT /{id}` (sets id from the path onto the body before updating — the URL is the source of truth, not the JSON body), `DELETE /{id}`. Frontend is a separate Vite/React app in `frontend/` (not wired into the Maven build — matches the v3 plan to deploy backend/frontend separately). `App.jsx` owns state (`useEffect` load, `reduce` for daily total), with `Header`, `CalorieSummary`, `MealForm`, `MealList`, `FoodItem`. `api.js` wraps GET/POST/DELETE (PUT/`updateMeal` exists but isn't wired into any UI yet). `@CrossOrigin(origins = "http://localhost:5173")` on the controller is required for the frontend to reach the backend.
 
-- `model/MealEntry.java` — `id` (long), `name` (String), `calories` (int).
-- `service/MealEntryService.java` — `@Service` holding `List<MealEntry> mealEntries`, seeded with 3 sample meals (ids 1–3) at startup. Ids for new meals are server-assigned via an `AtomicLong idCounter` (starts at 4) — the client never sets an id on POST; it's stamped in `addMealEntry`. `updateMealEntry`/`deleteMealEntry` match by id.
-- `controller/MealEntryController.java` — `@RestController` at `/api/meals`: `GET`, `POST` (`@RequestBody`), `PUT /{id}` (`@RequestBody`, sets the id from the path onto the body before updating — the URL is the source of truth, not the JSON body), `DELETE /{id}`.
+**v2 (Postgres/JPA) — core done, environment set up:**
 
-Verified end-to-end via Postman: POST → GET → PUT → DELETE all work as expected.
+- Postgres 18 installed natively on Windows (not Docker — deliberate, to keep focus on JPA/relational concepts). Runs as Windows service `postgresql-x64-18`. Dedicated role `caltracker_app` and database `caltracker` (not the `postgres` superuser).
+- `pom.xml` has `spring-boot-starter-data-jpa` and `org.postgresql:postgresql` (runtime scope) added.
+- `application.properties` has the datasource block (`jdbc:postgresql://localhost:5432/caltracker`, `caltracker_app` credentials) plus `spring.jpa.hibernate.ddl-auto=update` (Hibernate creates/updates tables from `@Entity`, never drops data) and `spring.jpa.show-sql=true` (prints generated SQL — intentional, for learning).
+- `model/MealEntry.java` — now `@Entity` + `@Table(name = "meal_entries")`, `@Id` + `@GeneratedValue(strategy = GenerationType.IDENTITY)` on `id` (kept as primitive `long`, not `Long`).
+- `service/MealEntryRepository.java` — `interface MealEntryRepository extends JpaRepository<MealEntry, Long>`. Note: lives in the `service` package, not a separate `repository` package — works fine via component scan, just an organizational quirk if you go looking for it.
+- `service/MealEntryService.java` — rewritten to delegate to `MealEntryRepository` instead of the old `ArrayList`/`AtomicLong`.
+- No seed data currently — the table starts empty (the old 3 sample meals from v1's in-memory seed are gone; adding them back via a guarded `CommandLineRunner` is an open option, not done).
 
-**Part B (frontend) is also done and working**, at `frontend/` (sibling to `pom.xml`, inside the same repo) — a Vite/React app: `App.jsx` owns state (`useEffect` load, `reduce` for the daily total), with `Header`, `CalorieSummary`, `MealForm`, `MealList`, and a reusable `FoodItem` component (one per meal, via `.map()`). Styled minimalist/CalAI-MyFitnessPal-inspired with Tailwind v4. `api.js` wraps `GET`/`POST`/`DELETE` (plus `updateMeal` for `PUT`, defined but not wired into the UI yet — edit UI is intentionally deferred). `@CrossOrigin(origins = "http://localhost:5173")` is on `MealEntryController` for this to work.
+**A real bug was hit and fixed today, worth knowing about:** the first version of the rewritten service kept the old `AtomicLong idCounter` and manually called `mealEntry.setId(idCounter.getAndIncrement())` before `save()`. Spring Data JPA's `save()` decides insert-vs-update by checking whether the primitive `id` is `0` (new) or nonzero (existing). Manually assigning a nonzero id made every add look like an update to a row that didn't exist, so Hibernate called `merge()`, did a `SELECT` that found nothing, and threw `StaleObjectStateException` on every POST. Fix: never set `id` manually in `addMealEntry` — leave it at `0` and let `@GeneratedValue(IDENTITY)` + Postgres's identity column assign it. This is a general trap when migrating away from a hand-rolled id counter: two id sources (app code and DB identity column) can't both be in control.
 
-Two bugs hit and fixed while wiring this up, worth knowing about:
-- CORS: the `@CrossOrigin` annotation above — expected per the roadmap, not a surprise.
-- Jackson: `MealEntry`'s 3-arg constructor was being auto-detected by Jackson as the JSON-deserialization constructor, which broke POST (whose body omits `id` on purpose, since the server assigns it) with `Cannot map 'null' into type 'long'`. Fixed with `@JsonCreator(mode = JsonCreator.Mode.DISABLED)` on that constructor, forcing Jackson back to the no-arg constructor + setters.
+**Not done yet:** no 404 handling when updating/deleting an unknown id (`deleteById` on a missing id throws rather than no-ops now — a real behavior change from v1 — but proper `@ExceptionHandler`/`ResponseStatusException` handling is deliberately deferred, it's API-design work not storage-layer work); no edit/update UI on the frontend; no seed data.
 
-Not done yet: no 404 handling when updating/deleting an unknown id (service methods return `void`, so it silently no-ops); no edit/update UI.
+### Request flow (how a call actually reaches Postgres)
 
-**Frontend was originally built in a wrong location** (a sibling directory, `calTracker-frontend`, outside this repo) and then moved into `frontend/` here — that migration is done, the sibling directory no longer exists. Considered nesting it at `src/main/frontend` (the `frontend-maven-plugin` convention for bundling frontend+backend into one deployable jar) but decided against it for now: the roadmap's v3 step deploys backend and frontend separately (Render/Railway + Vercel), so there's no current reason for Maven to know the frontend exists. Revisit if the deploy plan changes — see the note in Commands below.
+Worth understanding end to end, since none of this is written by hand — it's wired together by annotations + config:
 
-**Next session:** user is going to read through the frontend component code (`frontend/src/`) after a break and will likely have clarification questions — no code changes expected to be needed going in, just explaining what's there.
+1. **Frontend → Controller**: `api.js` sends the HTTP request; Jackson deserializes the JSON body into a `MealEntry` via the no-arg constructor + setters (the `@JsonCreator(DISABLED)` 3-arg constructor stays out of this path on purpose, since POST bodies omit `id`).
+2. **Controller → Service → Repository**: the controller calls a service method, which calls a method on `MealEntryRepository`. That interface has no implementation in this codebase — Spring Data JPA generates a real implementation (a dynamic proxy) at startup.
+3. **Repository proxy → Hibernate**: the generated proxy delegates to Hibernate (the JPA provider), which reads the `@Entity`/`@Table`/`@Id` annotations on `MealEntry` and turns the method call into an actual SQL string (visible in the console via `show-sql=true`).
+4. **Hibernate → JDBC → Postgres**: that SQL travels over a real network connection opened by the `org.postgresql:postgresql` driver, using the connection pool (HikariCP) Spring Boot auto-configures from the `spring.datasource.*` properties. This is the literal address — without it, there'd be a driver and generated SQL but nowhere to send it.
+5. Response flows back up the same chain: Postgres → JDBC → Hibernate maps result rows back into `MealEntry` objects (same no-arg-constructor-plus-setters mechanism, just driven by SQL columns instead of JSON fields) → repository → service → controller → Jackson serializes to JSON → frontend.
+
+### Known gotchas
+
+- **Stale dev servers break CORS silently.** If `npm run dev` reports "Port 5173 is in use, trying another one," a leftover Vite process is squatting on 5173 and the new one lands on 5174+. `@CrossOrigin(origins = "http://localhost:5173")` only allows exactly 5173, so the frontend's fetch calls get silently blocked by the browser — no error shown in the UI, just nothing happening. Fix: find and kill the stale process (`netstat -ano | findstr :5173`, then stop that PID) before starting a fresh one.
+- **Never manually assign `id` before `save()`.** See the bug writeup above — let `@GeneratedValue` + Postgres handle it.
 
 ## Commands
 
@@ -61,4 +73,11 @@ npm install                     # first-time setup / after pulling new deps
 npm run dev                     # run the app (localhost:5173)
 ```
 
-Java 26, Spring Boot 4.1.0. Run both dev servers at once for the app to work end-to-end (frontend calls the backend at `localhost:8080`). `frontend/` is a plain sibling folder to `pom.xml` inside this same repo — not wired into the Maven build (no `frontend-maven-plugin`), matching the roadmap's v3 plan to deploy backend and frontend separately (Render/Railway + Vercel) rather than bundle into one jar. Revisit this structure if that deploy plan changes.
+Database — Postgres 18, native Windows service `postgresql-x64-18` (not Docker):
+
+```
+psql -U caltracker_app -h localhost -d caltracker    # connect as the app role (password in application.properties)
+psql -U postgres -h localhost                          # connect as superuser (for admin tasks, e.g. creating roles/dbs)
+```
+
+Java 26, Spring Boot 4.1.0. Run backend + frontend + Postgres (as a Windows service, starts automatically) for the app to work end-to-end. `frontend/` is a plain sibling folder to `pom.xml` inside this same repo — not wired into the Maven build (no `frontend-maven-plugin`), matching the roadmap's v3 plan to deploy backend and frontend separately (Render/Railway + Vercel) rather than bundle into one jar. Revisit this structure if that deploy plan changes.
