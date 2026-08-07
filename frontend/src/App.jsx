@@ -4,6 +4,7 @@ import Header from "./components/Header.jsx";
 import CalorieSummary from "./components/CalorieSummary.jsx";
 import MealForm from "./components/MealForm.jsx";
 import MealList from "./components/MealList.jsx";
+import DateSelection from "./components/DateSelection.jsx";
 
 export default function App() {
   const [meals, setMeals] = useState([]);
@@ -37,6 +38,7 @@ export default function App() {
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col gap-6 px-4 py-10">
       <Header />
+      <DateSelection entryDate={entryDate} onDateChange={setEntryDate} />
       <CalorieSummary total={total} />
       <MealForm onAdd={handleAdd} />
       <MealList meals={meals} onDelete={handleDelete} />
