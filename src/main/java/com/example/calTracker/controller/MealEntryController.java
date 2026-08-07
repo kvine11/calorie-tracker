@@ -17,7 +17,7 @@ import com.example.calTracker.service.MealEntryService;
 
 @RestController
 @RequestMapping("/api/meals")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(originPatterns = "http://localhost:*")
 public class MealEntryController {
 
     private final MealEntryService mealEntryService;
