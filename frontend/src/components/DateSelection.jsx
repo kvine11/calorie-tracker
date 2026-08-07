@@ -5,7 +5,7 @@ const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
 // TODO: decide the prop contract with App.jsx — e.g. selectedDate (string or Date?)
 // and an onDateChange callback so a click here can update App's entryDate state.
-function DateSelection({ entryDate , onDateChange }) {
+function DateSelection({ entryDate, onDateChange }) {
   // TODO: local state for whichever date anchors the visible week.
   const year = entryDate.split("-")[0];
   const month = entryDate.split("-")[1];
@@ -44,7 +44,8 @@ function DateSelection({ entryDate , onDateChange }) {
   // TODO: handle a click on a specific day — update local + (eventually) App state.
   const handleDateClick = (date) => {
     setAnchorDate(date);
-    onDateChange(date.toISOString().split("T")[0]);
+    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    onDateChange(formattedDate);
   };
 
   return (
@@ -54,7 +55,7 @@ function DateSelection({ entryDate , onDateChange }) {
         aria-label="Previous week"
         className="rounded-full p-2 text-ink-mute transition hover:bg-border/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
-        ‹
+        
       </button>
 
       <div className="flex flex-1 justify-between">

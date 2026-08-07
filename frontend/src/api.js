@@ -1,10 +1,5 @@
 const BASE_URL = "http://localhost:8080/api/meals";
 
-export async function getMeals() {
-  const res = await fetch(BASE_URL);
-  if (!res.ok) throw new Error("Failed to load meals");
-  return res.json();
-}
 
 export async function getMealsByDate(date) {
   const res = await fetch(`${BASE_URL}/date/${date}`);
@@ -28,11 +23,11 @@ export async function deleteMeal(id) {
 }
 
 // Not wired into the UI yet — backend PUT is ready, edit UI is a later session.
-export async function updateMeal(id, { name, calories }) {
+export async function updateMeal(id, { name, calories, date }) {
   const res = await fetch(`${BASE_URL}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, calories }),
+    body: JSON.stringify({ name, calories, date }),
   });
   if (!res.ok) throw new Error("Failed to update meal");
 }

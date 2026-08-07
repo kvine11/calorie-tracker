@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { getMeals, addMeal, deleteMeal, getMealsByDate } from "./api.js";
+import {addMeal, deleteMeal, getMealsByDate } from "./api.js";
 import Header from "./components/Header.jsx";
 import CalorieSummary from "./components/CalorieSummary.jsx";
 import MealForm from "./components/MealForm.jsx";
