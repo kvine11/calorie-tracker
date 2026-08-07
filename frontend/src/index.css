@@ -1,16 +1,18 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700;800&display=swap");
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
 
-  --color-bg: #f7f8fa;
+  --color-bg: #f5f3ed;
   --color-card: #ffffff;
-  --color-ink: #1f2328;
-  --color-ink-mute: #6b7280;
-  --color-border: #e7e9ed;
-  --color-accent: #10b981;
-  --color-accent-soft: #d1fae5;
+  --color-ink: #17140f;
+  --color-ink-mute: #78716a;
+  --color-border: #dedad0;
+  --color-border-strong: #17140f;
+  --color-accent: #c1401a;
+  --color-accent-soft: #f4e2d8;
 }
 
 body {
@@ -18,4 +20,19 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-feature-settings: "tnum" 1;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

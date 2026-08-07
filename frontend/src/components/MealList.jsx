@@ -1,24 +1,32 @@
+import { motion, AnimatePresence } from "framer-motion";
 import FoodItem from "./FoodItem.jsx";
 
 export default function MealList({ meals, onDelete }) {
   if (meals.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-ink-mute">
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="border border-dashed border-border px-4 py-6 text-center text-sm text-ink-mute"
+      >
         No meals logged yet — add your first one above.
-      </p>
+      </motion.p>
     );
   }
 
   return (
-    <ul className="flex flex-col gap-2">
-      {meals.map((meal) => (
-        <FoodItem
-          key={meal.id}
-          name={meal.name}
-          calories={meal.calories}
-          onDelete={() => onDelete(meal.id)}
-        />
-      ))}
+    <ul className="flex flex-col">
+      <AnimatePresence initial={false}>
+        {meals.map((meal) => (
+          <FoodItem
+            key={meal.id}
+            name={meal.name}
+            calories={meal.calories}
+            onDelete={() => onDelete(meal.id)}
+          />
+        ))}
+      </AnimatePresence>
     </ul>
   );
 }
