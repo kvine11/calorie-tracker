@@ -1,7 +1,10 @@
 package com.example.calTracker.model;
 
+import java.time.LocalDate;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,6 +21,9 @@ public class MealEntry {
     private String name;
     private int calories;
 
+    @Column(name = "date")
+    private LocalDate date;
+
 
     public MealEntry() {
     }
@@ -27,10 +33,11 @@ public class MealEntry {
     // assigns it). Disabling that keeps this constructor for internal Java use
     // (e.g. seeding sample data) while JSON deserialization uses MealEntry() + setters.
     @JsonCreator(mode = JsonCreator.Mode.DISABLED)
-    public MealEntry(long id, String name, int calories) {
+    public MealEntry(long id, String name, int calories, LocalDate date) {
         this.id = id;
         this.name = name;
         this.calories = calories;
+        this.date = date;
     }
 
     public long getId() {
@@ -47,6 +54,13 @@ public class MealEntry {
 
     public void setName(String name) {
         this.name = name;
+    }
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
     }
 
     public int getCalories() {

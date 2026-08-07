@@ -35,5 +35,9 @@ public class MealEntryService {
     public void deleteMealEntry(long id) {
         mealEntryRepository.deleteById(id);
     }
+
+    public List<MealEntry> getMealEntriesByDate(java.time.LocalDate date) {
+        return mealEntryRepository.findByDate(date);
+    }
     
 }

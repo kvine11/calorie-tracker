@@ -1,5 +1,6 @@
 package com.example.calTracker.controller;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -29,6 +30,11 @@ public class MealEntryController {
     @GetMapping
     public List<MealEntry> getAllMealEntries() {
         return mealEntryService.getAllMealEntries();
+    }
+
+    @GetMapping("/date/{date}")
+    public List<MealEntry> getMealEntriesByDate(@PathVariable LocalDate date) {
+        return mealEntryService.getMealEntriesByDate(date);
     }
 
     @PostMapping
