@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
+
+const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
 // TODO: decide the prop contract with App.jsx — e.g. selectedDate (string or Date?)
 // and an onDateChange callback so a click here can update App's entryDate state.
@@ -45,39 +48,58 @@ function DateSelection({ entryDate , onDateChange }) {
   };
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center gap-1">
       <button
         onClick={handlePreviousWeek}
-        className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        aria-label="Previous week"
+        className="rounded-full p-2 text-ink-mute transition hover:bg-border/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
-        Previous Week
+        ‹
       </button>
 
-      <div className="flex gap-2">
-        {
-          /* TODO: map over the week's dates and render each day (label + number),
-            with a click handler and a visual style for the selected day. */
-          getWeekDates().map((date) => (
+      <div className="flex flex-1 justify-between">
+        {getWeekDates().map((date) => {
+          const isSelected = date.toDateString() === anchorDate.toDateString();
+          return (
             <button
               key={date.toISOString()}
               onClick={() => handleDateClick(date)}
-              className={`rounded-full px-3 py-2 text-sm font-semibold transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                date.toDateString() === anchorDate.toDateString()
-                  ? "bg-accent text-white"
-                  : "bg-card text-ink hover:bg-gray-100"
-              }`}
+              aria-label={date.toDateString()}
+              aria-current={isSelected ? "date" : undefined}
+              className="relative flex h-14 w-11 flex-col items-center justify-center gap-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
-              {date.getMonth() + 1}/{date.getDate()}
+              {isSelected && (
+                <motion.div
+                  layoutId="day-highlight"
+                  transition={{ type: "spring", stiffness: 500, damping: 34 }}
+                  className="absolute inset-0 rounded-full bg-ink"
+                />
+              )}
+              <span
+                className={`relative z-10 text-[10px] font-bold uppercase tracking-wide ${
+                  isSelected ? "text-bg" : "text-ink-mute"
+                }`}
+              >
+                {dayLabels[date.getDay()]}
+              </span>
+              <span
+                className={`relative z-10 text-xs font-bold tabular-nums ${
+                  isSelected ? "text-bg" : "text-ink"
+                }`}
+              >
+                {date.getMonth() + 1}/{date.getDate()}
+              </span>
             </button>
-          ))
-        }
+          );
+        })}
       </div>
 
       <button
         onClick={handleNextWeek}
-        className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        aria-label="Next week"
+        className="rounded-full p-2 text-ink-mute transition hover:bg-border/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       >
-        Next Week
+        ›
       </button>
     </div>
   );
