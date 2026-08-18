@@ -5,7 +5,7 @@ const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
 // TODO: decide the prop contract with App.jsx — e.g. selectedDate (string or Date?)
 // and an onDateChange callback so a click here can update App's entryDate state.
-function DateSelection({ entryDate, onDateChange }) {
+function DateSelection({ entryDate, onDateChange, layoutId  = "day-highlight" }) {
   // TODO: local state for whichever date anchors the visible week.
   const year = entryDate.split("-")[0];
   const month = entryDate.split("-")[1];
@@ -71,7 +71,7 @@ function DateSelection({ entryDate, onDateChange }) {
             >
               {isSelected && (
                 <motion.div
-                  layoutId="day-highlight"
+                  layoutId={layoutId}
                   transition={{ type: "spring", stiffness: 500, damping: 34 }}
                   className="absolute inset-0 rounded-full bg-ink"
                 />
