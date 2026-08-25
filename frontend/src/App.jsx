@@ -84,7 +84,7 @@ export default function App() {
           <MealForm onAdd={handleAdd} onSearch={handleSearch} />
         </motion.div>
         <motion.div variants={rise}>
-          <MealList meals={meals} onDelete={handleDelete} onUpdate={handleUpdate} />
+          <MealList meals={meals} onDelete={handleDelete} onUpdate={handleUpdate} onSearch={handleSearch} />
         </motion.div>
       </motion.div>
     </div>

@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import FoodItem from "./FoodItem.jsx";
 
-export default function MealList({ meals, onDelete, onUpdate }) {
+export default function MealList({ meals, onDelete, onUpdate, onSearch }) {
   if (meals.length === 0) {
     return (
       <motion.p
@@ -27,6 +27,7 @@ export default function MealList({ meals, onDelete, onUpdate }) {
             date={meal.date}
             onDelete={() => onDelete(meal.id)}
             onUpdate={(updates) => onUpdate(meal.id, updates)}
+            onSearch = {onSearch}
           />
         ))}
       </AnimatePresence>
