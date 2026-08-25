@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function MealForm({ onAdd, onSearch }) {
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const debouncedQuery = useDebounce(name, 300);
+  const dropdownRef = useRef(null);
 
 
   function handleSubmit(event) {
@@ -32,6 +33,19 @@ export default function MealForm({ onAdd, onSearch }) {
   }
 
   useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && suggestions.length > 0) {
+        setSuggestions([]);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [suggestions]);
+
+  useEffect(() => {
     if(debouncedQuery.trim().length < 2) {
       setSuggestions([]);
       return;
@@ -48,7 +62,7 @@ export default function MealForm({ onAdd, onSearch }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <label className="relative flex-1">
+      <label ref={dropdownRef} className="relative flex-1">
         <span className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-mute">
           Food
         </span>
@@ -62,7 +76,7 @@ export default function MealForm({ onAdd, onSearch }) {
         />
 
         {suggestions.length > 0 && (
-          <ul className="absolute left-0 right-0 top-full z-10 mt-1 border border-border bg-card">
+          <ul className="absolute left-0 right-0 top-full z-50 mt-1 border border-border bg-card">
             {suggestions.slice(0, 10).map((suggestion, index) => (
               <li key={index}>
                 <button

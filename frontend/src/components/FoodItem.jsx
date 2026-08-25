@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef} from "react";
 import DateSelection from "./DateSelection.jsx";
 
 export default function FoodItem({ name, calories, id, date, onUpdate, onDelete, onSearch }) {
@@ -10,6 +10,7 @@ export default function FoodItem({ name, calories, id, date, onUpdate, onDelete,
   const [draftDate, setDraftDate] = useState(date);
   const [suggestions, setSuggestions] = useState([]);
   const debouncedQuery = useDebounce(draftName, 300);
+  const dropdownRef = useRef(null);
 
 
   function handleEditClick() {
@@ -52,6 +53,19 @@ export default function FoodItem({ name, calories, id, date, onUpdate, onDelete,
   }
 
   useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && suggestions.length > 0) {
+        setSuggestions([]);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [suggestions]);
+
+  useEffect(() => {
     if(!isEditing) return;
     if (debouncedQuery.trim().length < 2) {
       setSuggestions([]);
@@ -80,7 +94,7 @@ export default function FoodItem({ name, calories, id, date, onUpdate, onDelete,
             className="flex flex-col gap-3"
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <label className="relative flex-1">
+              <label ref={dropdownRef} className="relative flex-1">
                 <span className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-mute">
                   Food
                 </span>
@@ -93,7 +107,7 @@ export default function FoodItem({ name, calories, id, date, onUpdate, onDelete,
                 />
 
                 {suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full z-10 mt-1 border border-border bg-card">
+                  <ul className="absolute left-0 right-0 top-full z-50 mt-1 border border-border bg-card">
                     {suggestions.slice(0, 10).map((suggestion, index) => (
                       <li key={index}>
                         <button
