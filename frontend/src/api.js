@@ -31,3 +31,9 @@ export async function updateMeal(id, { name, calories, date }) {
   if (!res.ok) throw new Error("Failed to update meal");
 }
 
+export async function searchMeals(query) {
+  const res = await fetch(`${BASE_URL}/search?query=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error("Failed to search meals");
+  return res.json();
+}
+

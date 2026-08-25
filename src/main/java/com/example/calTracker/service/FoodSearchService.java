@@ -95,6 +95,10 @@ public class FoodSearchService {
         .body(SearchResponse.class);
 
         List<FoodSearch> results = new ArrayList<>();
+        
+        if(response.foods() == null || response.foods().food() == null) {
+            return results;
+        }
         for(FoodEntry entry : response.foods().food()) {
 
             Matcher matcher = Pattern.compile("Calories:\\s*(\\d+)kcal").matcher(entry.foodDescription());
