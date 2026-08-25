@@ -22,7 +22,6 @@ export async function deleteMeal(id) {
   if (!res.ok) throw new Error("Failed to delete meal");
 }
 
-// Not wired into the UI yet — backend PUT is ready, edit UI is a later session.
 export async function updateMeal(id, { name, calories, date }) {
   const res = await fetch(`${BASE_URL}/${id}`, {
     method: "PUT",
