@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import {addMeal, deleteMeal, getMealsByDate, updateMeal } from "./api.js";
+import {addMeal, deleteMeal, getMealsByDate, updateMeal, searchMeals } from "./api.js";
 import Header from "./components/Header.jsx";
 import CalorieSummary from "./components/CalorieSummary.jsx";
 import MealForm from "./components/MealForm.jsx";
@@ -55,6 +55,14 @@ export default function App() {
     }
   }
 
+  async function handleSearch(query) {
+    try {
+      return await searchMeals(query);
+    } catch (err) {
+      return [];
+    }
+  }
+
   return (
     <div className="min-h-screen px-4 py-10 sm:py-16">
       <motion.div
@@ -73,10 +81,10 @@ export default function App() {
           <CalorieSummary total={total} />
         </motion.div>
         <motion.div variants={rise}>
-          <MealForm onAdd={handleAdd} />
+          <MealForm onAdd={handleAdd} onSearch={handleSearch} />
         </motion.div>
         <motion.div variants={rise}>
-          <MealList meals={meals} onDelete={handleDelete} onUpdate={handleUpdate} />
+          <MealList meals={meals} onDelete={handleDelete} onUpdate={handleUpdate} onSearch={handleSearch} />
         </motion.div>
       </motion.div>
     </div>
