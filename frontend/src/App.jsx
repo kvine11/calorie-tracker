@@ -1,46 +1,60 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import {addMeal, deleteMeal, getMealsByDate, updateMeal, searchMeals } from "./api.js";
-import Header from "./components/Header.jsx";
-import CalorieSummary from "./components/CalorieSummary.jsx";
-import MealForm from "./components/MealForm.jsx";
-import MealList from "./components/MealList.jsx";
-import DateSelection from "./components/DateSelection.jsx";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { addMeal, deleteMeal, getMealsByDate, searchMeals, updateMeal } from "./api.js";
+import { todayISO } from "./dates.js";
+import Sidebar from "./components/Sidebar.jsx";
+import TodayView from "./components/TodayView.jsx";
+import HistoryView from "./components/HistoryView.jsx";
+import SearchView from "./components/SearchView.jsx";
+import SettingsView from "./components/SettingsView.jsx";
+import QuickAddPalette from "./components/QuickAddPalette.jsx";
+import ConfirmDialog from "./components/ConfirmDialog.jsx";
+import UndoToast from "./components/UndoToast.jsx";
 
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
-};
-
-const rise = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
-};
+const UNDO_WINDOW_MS = 6000;
 
 export default function App() {
+  // Which pane of the shell is showing. A hand-rolled view state rather than a
+  // router — there's one shell and four panes, nothing to route.
+  const [view, setView] = useState("today");
+  const [entryDate, setEntryDate] = useState(todayISO());
   const [meals, setMeals] = useState([]);
 
-  const [entryDate, setEntryDate] = useState(new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") + "-" + String(new Date().getDate()).padStart(2, "0"));
+  const [weekStartsOn, setWeekStartsOn] = useState(0);
+  const [confirmBeforeDelete, setConfirmBeforeDelete] = useState(false);
+
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const undoTimer = useRef(null);
 
   useEffect(() => {
     getMealsByDate(entryDate).then(setMeals).catch(console.error);
   }, [entryDate]);
 
-  const total = meals.reduce((sum, meal) => sum + meal.calories, 0);
-
-  async function handleAdd(name, calories) {
-    try {
-      await addMeal({ name, calories, date: entryDate });
-      setMeals(await getMealsByDate(entryDate));
-    } catch (err) {
-      console.error(err);
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setIsPaletteOpen(true);
+      } else if (event.key === "Escape") {
+        setIsPaletteOpen(false);
+        setConfirmTarget(null);
+      }
     }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => () => clearTimeout(undoTimer.current), []);
+
+  async function refresh() {
+    setMeals(await getMealsByDate(entryDate));
   }
 
-  async function handleDelete(id) {
+  async function handleAdd(name, calories, date = entryDate) {
     try {
-      await deleteMeal(id);
-      setMeals(await getMealsByDate(entryDate));
+      await addMeal({ name, calories, date });
+      await refresh();
     } catch (err) {
       console.error(err);
     }
@@ -48,45 +62,124 @@ export default function App() {
 
   async function handleUpdate(id, updates) {
     try {
-      await updateMeal(id, {name: updates.name, calories: updates.calories, date: updates.date});
-      setMeals(await getMealsByDate(entryDate));
+      await updateMeal(id, updates);
+      await refresh();
     } catch (err) {
       console.error(err);
     }
   }
 
-  async function handleSearch(query) {
-    try {
-      return await searchMeals(query);
-    } catch (err) {
-      return [];
+  // Deleting goes through here so the Settings preference decides whether it
+  // asks first or just offers an undo afterwards.
+  function requestDelete(meal) {
+    if (confirmBeforeDelete) {
+      setConfirmTarget(meal);
+    } else {
+      performDelete(meal);
     }
   }
 
+  async function performDelete(meal) {
+    setConfirmTarget(null);
+    try {
+      await deleteMeal(meal.id);
+      await refresh();
+      clearTimeout(undoTimer.current);
+      setPendingDelete(meal);
+      undoTimer.current = setTimeout(() => setPendingDelete(null), UNDO_WINDOW_MS);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function handleUndo() {
+    const meal = pendingDelete;
+    if (!meal) return;
+    clearTimeout(undoTimer.current);
+    setPendingDelete(null);
+    // Re-posted, so it returns with a fresh id — the row is back, not the row.
+    await handleAdd(meal.name, meal.calories, meal.date);
+  }
+
+  // Stable so the search hooks don't re-fire on every parent render.
+  const handleSearch = useCallback(async (query) => {
+    try {
+      return await searchMeals(query);
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen px-4 py-10 sm:py-16">
-      <motion.div
-        variants={stagger}
-        initial="hidden"
-        animate="show"
-        className="mx-auto flex max-w-md flex-col gap-7 border border-border bg-card px-5 py-6 shadow-[0_1px_0_theme(colors.border)] sm:px-7 sm:py-8"
-      >
-        <motion.div variants={rise}>
-          <Header />
-        </motion.div>
-        <motion.div variants={rise}>
-          <DateSelection entryDate={entryDate} onDateChange={setEntryDate} />
-        </motion.div>
-        <motion.div variants={rise}>
-          <CalorieSummary total={total} />
-        </motion.div>
-        <motion.div variants={rise}>
-          <MealForm onAdd={handleAdd} onSearch={handleSearch} />
-        </motion.div>
-        <motion.div variants={rise}>
-          <MealList meals={meals} onDelete={handleDelete} onUpdate={handleUpdate} onSearch={handleSearch} />
-        </motion.div>
-      </motion.div>
+    <div
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        background: "var(--color-bg)",
+        color: "var(--color-text)",
+        fontFamily: "var(--font-body)",
+      }}
+    >
+      <Sidebar view={view} onNavigate={setView} onQuickAdd={() => setIsPaletteOpen(true)} />
+
+      <main data-main style={{ flex: 1, minWidth: 0, padding: "var(--space-8) var(--space-8) 120px", maxWidth: 1180 }}>
+        {view === "today" && (
+          <TodayView
+            entryDate={entryDate}
+            onDateChange={setEntryDate}
+            meals={meals}
+            weekStartsOn={weekStartsOn}
+            onAdd={handleAdd}
+            onUpdate={handleUpdate}
+            onDelete={requestDelete}
+            onDuplicate={(meal) => handleAdd(meal.name, meal.calories, todayISO())}
+            onSearch={handleSearch}
+          />
+        )}
+
+        {view === "history" && (
+          <HistoryView
+            entryDate={entryDate}
+            onOpenDay={(date) => {
+              setEntryDate(date);
+              setView("today");
+            }}
+          />
+        )}
+
+        {view === "search" && (
+          <SearchView entryDate={entryDate} onSearch={handleSearch} onAdd={handleAdd} />
+        )}
+
+        {view === "settings" && (
+          <SettingsView
+            weekStartsOn={weekStartsOn}
+            onWeekStartsOnChange={setWeekStartsOn}
+            confirmBeforeDelete={confirmBeforeDelete}
+            onConfirmBeforeDeleteChange={setConfirmBeforeDelete}
+          />
+        )}
+      </main>
+
+      {pendingDelete && <UndoToast meal={pendingDelete} onUndo={handleUndo} />}
+
+      {isPaletteOpen && (
+        <QuickAddPalette
+          entryDate={entryDate}
+          onSearch={handleSearch}
+          onAdd={handleAdd}
+          onClose={() => setIsPaletteOpen(false)}
+        />
+      )}
+
+      {confirmTarget && (
+        <ConfirmDialog
+          meal={confirmTarget}
+          onConfirm={() => performDelete(confirmTarget)}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </div>
   );
 }

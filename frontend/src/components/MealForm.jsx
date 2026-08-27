@@ -1,12 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useRef, useState } from "react";
+import { useClickOutside, useFoodSearch } from "../hooks.js";
+import { CameraIcon } from "./Icons.jsx";
 
 export default function MealForm({ onAdd, onSearch }) {
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const debouncedQuery = useDebounce(name, 300);
-  const dropdownRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const fieldRef = useRef(null);
 
+  const { suggestions } = useFoodSearch(name, { onSearch });
+  useClickOutside(fieldRef, () => setIsOpen(false));
 
   function handleSubmit(event) {
     event.preventDefault();
@@ -15,104 +18,131 @@ export default function MealForm({ onAdd, onSearch }) {
     onAdd(name.trim(), Number(calories));
     setName("");
     setCalories("");
+    setIsOpen(false);
   }
 
-  function useDebounce(value, delay = 300) {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-
-    useEffect(() => {
-      const handler = setTimeout(() => {
-        setDebouncedValue(value);
-      }, delay);
-
-      // Clear timeout if value changes before delay finishes
-      return () => clearTimeout(handler);
-    }, [value, delay]);
-
-    return debouncedValue;
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && suggestions.length > 0) {
-        setSuggestions([]);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [suggestions]);
-
-  useEffect(() => {
-    if(debouncedQuery.trim().length < 2) {
-      setSuggestions([]);
-      return;
-    }
-    onSearch(debouncedQuery).then(setSuggestions);
-  }, [debouncedQuery]);
-
-
-
-  const handleSelect = ({foodName, calories}) => {
-    setName(foodName);
-    setCalories(calories);
+  // Picking a match fills both fields but leaves calories editable — the
+  // portion on the plate is rarely the portion the database assumed.
+  function handlePick(suggestion) {
+    setName(suggestion.foodName);
+    setCalories(suggestion.calories);
+    setIsOpen(false);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <label ref={dropdownRef} className="relative flex-1">
-        <span className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-mute">
-          Food
-        </span>
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="What did you eat?"
-          aria-label="Food name"
-          className="mt-1 w-full border-b-2 border-border bg-transparent py-1.5 text-sm text-ink placeholder:text-ink-mute/70 focus:border-accent focus:outline-none"
-        />
+    <div className="card elev-sm" style={{ gap: "var(--space-3)" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: "var(--space-3)",
+        }}
+      >
+        <div className="card-title">Log a meal</div>
+        <div style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 50%, transparent)" }}>
+          Start typing for matches
+        </div>
+      </div>
 
-        {suggestions.length > 0 && (
-          <ul className="absolute left-0 right-0 top-full z-50 mt-1 border border-border bg-card">
-            {suggestions.slice(0, 10).map((suggestion, index) => (
-              <li key={index}>
-                <button
-                  type="button"
-                  onClick={() => handleSelect(suggestion)}
-                  className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left text-sm text-ink hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                >
-                  <span>{suggestion.foodName}</span>
-                  <span className="tabular-nums text-ink-mute">{suggestion.calories} cal</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </label>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-start", flexWrap: "wrap" }}
+      >
+        <div ref={fieldRef} style={{ position: "relative", flex: 1, minWidth: 200 }}>
+          <input
+            className="input"
+            type="text"
+            placeholder="What did you eat?"
+            aria-label="Food name"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+          />
 
-      <label className="sm:w-24">
-        <span className="text-xs font-semibold uppercase tracking-[0.15em] text-ink-mute">
-          Cal
-        </span>
+          {isOpen && suggestions.length > 0 && (
+            <ul
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: "calc(100% + 6px)",
+                zIndex: 40,
+                margin: 0,
+                padding: 6,
+                listStyle: "none",
+                background: "var(--color-neutral-100)",
+                border: "1px solid var(--color-divider)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "var(--shadow-md)",
+                animation: "popIn 140ms ease both",
+              }}
+            >
+              {suggestions.map((suggestion, index) => (
+                <li key={`${suggestion.foodName}-${index}`}>
+                  <button
+                    type="button"
+                    className="suggestion"
+                    onClick={() => handlePick(suggestion)}
+                    style={{
+                      display: "flex",
+                      width: "100%",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 16,
+                      padding: "7px 10px",
+                      border: 0,
+                      borderRadius: 999,
+                      background: "transparent",
+                      cursor: "pointer",
+                      fontFamily: "var(--font-body)",
+                      fontSize: 14,
+                      color: "var(--color-text)",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span>{suggestion.foodName}</span>
+                    <span
+                      style={{
+                        fontVariantNumeric: "tabular-nums",
+                        color: "color-mix(in srgb, var(--color-text) 55%, transparent)",
+                      }}
+                    >
+                      {suggestion.calories} cal
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <input
+          className="input"
           type="number"
           min="0"
+          placeholder="cal"
+          aria-label="Calories"
           value={calories}
           onChange={(event) => setCalories(event.target.value)}
-          placeholder="0"
-          aria-label="Calories"
-          className="mt-1 w-full border-b-2 border-border bg-transparent py-1.5 text-sm tabular-nums text-ink placeholder:text-ink-mute/70 focus:border-accent focus:outline-none"
+          style={{ width: 96, flex: "none", fontVariantNumeric: "tabular-nums" }}
         />
-      </label>
-      <button
-        type="submit"
-        className="bg-ink px-5 py-2.5 text-sm font-semibold uppercase tracking-wide text-bg transition hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >
-        Add
-      </button>
-    </form>
+
+        <button type="submit" className="btn btn-primary">
+          Add meal
+        </button>
+
+        <button type="button" className="btn btn-secondary" disabled style={{ gap: 8 }}>
+          <CameraIcon size={15} />
+          Scan
+          <span className="tag tag-neutral" style={{ fontSize: 10, padding: "1px 7px" }}>
+            soon
+          </span>
+        </button>
+      </form>
+    </div>
   );
 }
