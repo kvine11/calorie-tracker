@@ -1,30 +1,437 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700;800&display=swap");
+/* ─────────────────────────────────────────────────────────────────────────
+   Organic — design-system tokens and component classes.
+   Ported from the Claude Design project "Organic"
+   (_ds/organic-215cb609-0674-4c24-99cc-d613ed8d14c6/styles.css) plus the
+   app-level overrides that "Calorie Tracker.dc.html" declares in its helmet.
+   This file is the source of truth for the look — retune here, not in JSX.
+   ───────────────────────────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap");
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
+:root {
+  --color-bg: #f5ead8;
+  --color-surface: #ebddc5;
+  --color-text: #201e1d;
+  --color-accent: #c67139;
+  --color-accent-2: #7a8a5e;
+  --color-divider: color-mix(in srgb, #201e1d 16%, transparent);
 
-  --color-bg: #f5f3ed;
-  --color-card: #ffffff;
-  --color-ink: #17140f;
-  --color-ink-mute: #78716a;
-  --color-border: #dedad0;
-  --color-border-strong: #17140f;
-  --color-accent: #c1401a;
-  --color-accent-soft: #f4e2d8;
+  /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
+     same step of any role matches the others in visual value. */
+  --color-neutral-100: #f9f4ed;
+  --color-neutral-200: #eee7db;
+  --color-neutral-300: #dcd3c4;
+  --color-neutral-400: #c0b6a5;
+  --color-neutral-500: #a19786;
+  --color-neutral-600: #82796a;
+  --color-neutral-700: #645c50;
+  --color-neutral-800: #474238;
+  --color-neutral-900: #2e2b25;
+
+  --color-accent-100: #fff2eb;
+  --color-accent-200: #ffe1d0;
+  --color-accent-300: #ffc6a5;
+  --color-accent-400: #f6a06b;
+  --color-accent-500: #d67f48;
+  --color-accent-600: #b2622d;
+  --color-accent-700: #8c491a;
+  --color-accent-800: #643312;
+  --color-accent-900: #402310;
+
+  --color-accent-2-100: #f0fae1;
+  --color-accent-2-200: #e1eecc;
+  --color-accent-2-300: #ccdbb2;
+  --color-accent-2-400: #aebf92;
+  --color-accent-2-500: #8fa073;
+  --color-accent-2-600: #728157;
+  --color-accent-2-700: #56633f;
+  --color-accent-2-800: #3d472b;
+  --color-accent-2-900: #272e1b;
+
+  /* The design overrides the system's display face (Caprasimo) with Quicksand. */
+  --font-heading: "Quicksand", system-ui, sans-serif;
+  --font-heading-weight: 600;
+  --font-body: "Figtree", system-ui, sans-serif;
+
+  --space-1: 4.4px;
+  --space-2: 8.8px;
+  --space-3: 13.2px;
+  --space-4: 17.6px;
+  --space-6: 26.4px;
+  --space-8: 35.2px;
+
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 28px;
+
+  /* Elevation — soft ink-tinted shadows lifted off the warm ground. */
+  --shadow-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
+  --shadow-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
+  --shadow-lg: 0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-feature-settings: "tnum" 1;
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
 }
 
-.font-display {
-  font-family: var(--font-display);
-  font-optical-sizing: auto;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--space-2);
+}
+h1 {
+  font-size: 42px;
+}
+h2 {
+  font-size: 32px;
+}
+h3 {
+  font-size: 25px;
+}
+h4 {
+  font-size: 20px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+p {
+  margin: 0 0 var(--space-3);
+}
+a {
+  color: var(--color-accent);
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--color-accent-700);
+}
+button {
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+img {
+  display: block;
+  max-width: 100%;
+}
+.text-muted {
+  color: color-mix(in srgb, var(--color-text) 55%, transparent);
+}
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+/* — buttons — */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  padding: var(--space-2) calc(var(--space-3) * 1.2);
+  border-radius: var(--radius-md);
+}
+.btn svg {
+  display: block;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+.btn-primary:hover {
+  background: var(--color-accent-600);
+}
+.btn-primary:active {
+  background: var(--color-accent-700);
+}
+.btn-secondary {
+  border-color: var(--color-divider);
+}
+.btn-secondary:hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.btn-secondary:active {
+  background: color-mix(in srgb, var(--color-text) 14%, transparent);
+}
+.btn-ghost {
+  color: var(--color-accent);
+  padding-inline: var(--space-1);
+}
+.btn-ghost:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+.btn-ghost:active {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+/* — forms — */
+.field > label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+  color: color-mix(in srgb, var(--color-text) 70%, transparent);
+}
+.input {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  caret-color: var(--color-accent);
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+.input:hover {
+  border-color: color-mix(in srgb, var(--color-text) 45%, transparent);
+}
+.input:focus-visible {
+  border-color: var(--color-accent);
+  outline-offset: 0;
+}
+.seg {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+}
+.seg-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seg-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.seg-opt + .seg-opt {
+  border-left: 1px solid var(--color-divider);
+}
+.seg-opt:has(input:checked) {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+.seg-opt:not(:has(input:checked)):hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.seg-opt:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* — cards — */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.card-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 17px;
+  line-height: 1.2;
+}
+.card-body {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.8;
+  flex: 1;
+}
+.elev-sm {
+  box-shadow: var(--shadow-sm);
+}
+.elev-md {
+  box-shadow: var(--shadow-md);
+}
+.elev-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+/* — tags — */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 3px 10px;
+  border-radius: calc(var(--radius-md) * 0.75);
+}
+.tag-accent {
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+}
+.tag-neutral {
+  background: var(--color-neutral-100);
+  color: var(--color-neutral-800);
+}
+
+/* — dialog — */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+}
+.dialog {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+}
+.dialog-title {
+  font-family: var(--font-heading);
+  font-weight: var(--font-heading-weight);
+  font-size: 20px;
+}
+.dialog-body {
+  font-size: 14px;
+  opacity: 0.85;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* — rounded frame: everything softens, small controls go pill — */
+.card,
+.dialog {
+  border-radius: calc(var(--radius-lg) * 1.15);
+}
+.btn,
+.tag,
+.seg,
+.input {
+  border-radius: 999px;
+}
+.input {
+  padding-inline: 14px;
+}
+
+/* ── app-level styles from the design's helmet ─────────────────────────── */
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Hover states the design expresses inline via style-hover. */
+.nav-item:not([data-active="true"]):hover {
+  background: color-mix(in srgb, var(--color-text) 7%, transparent);
+}
+.row-hover:hover {
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+.suggestion:hover {
+  background: var(--color-accent-100);
+}
+.chip:hover {
+  background: var(--color-accent-100);
+  border-color: var(--color-accent);
+}
+
+@media (max-width: 1040px) {
+  [data-grid] {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (max-width: 900px) {
+  [data-sidebar] {
+    width: 190px !important;
+    padding: 20px 10px !important;
+  }
+  [data-main] {
+    padding: 24px 20px 96px !important;
+    max-width: none !important;
+  }
+}
+@media (max-width: 620px) {
+  [data-daystrip] button {
+    min-width: 40px !important;
+  }
+  [data-main] h1 {
+    font-size: 30px !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

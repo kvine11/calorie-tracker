@@ -1,109 +1,115 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { iso, shiftISO, weekOf } from "../dates.js";
 
 const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
-// TODO: decide the prop contract with App.jsx — e.g. selectedDate (string or Date?)
-// and an onDateChange callback so a click here can update App's entryDate state.
-function DateSelection({ entryDate, onDateChange, layoutId  = "day-highlight" }) {
-  // TODO: local state for whichever date anchors the visible week.
-  const year = entryDate.split("-")[0];
-  const month = entryDate.split("-")[1];
-  const day = entryDate.split("-")[2];
-  const [anchorDate, setAnchorDate] = useState(new Date(year, month - 1, day));
+// One week of day pills. Two instances exist at once when a meal is expanded:
+// the page-level strip that drives which day is loaded, and the one inside a
+// meal's detail view that moves that single meal to another day.
+export default function DateSelection({
+  entryDate,
+  onDateChange,
+  weekStartsOn = 0,
+  showWeekNav = false,
+  compact = false,
+}) {
+  const days = weekOf(entryDate, weekStartsOn);
 
-  // TODO: given an anchor date, return the 7 dates (Sun-Sat) of its week.
-  function getWeekDates() {
-    const weekDates = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(anchorDate);
-      const firstDayOfWeek = date.getDate() - date.getDay(); // Get the first day of the week (Sunday)
-      date.setDate(firstDayOfWeek + i);
-      weekDates.push(date);
-    }
-
-    return weekDates;
-  }
-
-  // TODO: move the visible week back by 7 days.
-  const handlePreviousWeek = () => {
-    const previousWeekDate = new Date(anchorDate);
-    previousWeekDate.setDate(previousWeekDate.getDate() - 7);
-    setAnchorDate(previousWeekDate);
-    handleDateClick(previousWeekDate);
-  };
-
-  // TODO: move the visible week forward by 7 days.
-  const handleNextWeek = () => {
-    const nextWeekDate = new Date(anchorDate);
-    nextWeekDate.setDate(nextWeekDate.getDate() + 7);
-    setAnchorDate(nextWeekDate);
-    handleDateClick(nextWeekDate);
-  };
-
-  // TODO: handle a click on a specific day — update local + (eventually) App state.
-  const handleDateClick = (date) => {
-    setAnchorDate(date);
-    const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-    onDateChange(formattedDate);
-  };
+  const pillLayout = compact
+    ? { width: 46, flex: "none", padding: "7px 0" }
+    : { flex: 1, minWidth: 44, maxWidth: 68, padding: "9px 0" };
 
   return (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={handlePreviousWeek}
-        aria-label="Previous week"
-        className="rounded-full p-2 text-ink-mute transition hover:bg-border/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        
-      </button>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--space-2)",
+        flex: compact ? "none" : 1,
+        minWidth: compact ? 0 : 340,
+      }}
+    >
+      {showWeekNav && (
+        <button
+          type="button"
+          onClick={() => onDateChange(shiftISO(entryDate, -7))}
+          className="btn btn-icon btn-secondary"
+          aria-label="Previous week"
+          style={{ flex: "none" }}
+        >
+          ‹
+        </button>
+      )}
 
-      <div className="flex flex-1 justify-between">
-        {getWeekDates().map((date) => {
-          const isSelected = date.toDateString() === anchorDate.toDateString();
+      <div
+        data-daystrip
+        style={{
+          display: "flex",
+          gap: compact ? 4 : 6,
+          flex: 1,
+          flexWrap: compact ? "wrap" : "nowrap",
+          justifyContent: compact ? "flex-start" : "space-between",
+        }}
+      >
+        {days.map((date) => {
+          const dateString = iso(date);
+          const isSelected = dateString === entryDate;
           return (
             <button
-              key={date.toISOString()}
-              onClick={() => handleDateClick(date)}
+              type="button"
+              key={dateString}
+              onClick={() => onDateChange(dateString)}
               aria-label={date.toDateString()}
               aria-current={isSelected ? "date" : undefined}
-              className="relative flex h-14 w-11 flex-col items-center justify-center gap-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              style={{
+                ...pillLayout,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 1,
+                border: `1px solid ${isSelected ? "var(--color-accent)" : "var(--color-divider)"}`,
+                borderRadius: 999,
+                cursor: "pointer",
+                background: isSelected ? "var(--color-accent)" : "transparent",
+                color: isSelected ? "var(--color-bg)" : "var(--color-text)",
+                fontFamily: "var(--font-body)",
+                transition: "background 160ms ease, border-color 160ms ease",
+              }}
             >
-              {isSelected && (
-                <motion.div
-                  layoutId={layoutId}
-                  transition={{ type: "spring", stiffness: 500, damping: 34 }}
-                  className="absolute inset-0 rounded-full bg-ink"
-                />
-              )}
               <span
-                className={`relative z-10 text-[10px] font-bold uppercase tracking-wide ${
-                  isSelected ? "text-bg" : "text-ink-mute"
-                }`}
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  opacity: 0.7,
+                }}
               >
                 {dayLabels[date.getDay()]}
               </span>
               <span
-                className={`relative z-10 text-xs font-bold tabular-nums ${
-                  isSelected ? "text-bg" : "text-ink"
-                }`}
+                style={{
+                  fontSize: compact ? 13 : 14,
+                  fontWeight: 600,
+                  fontVariantNumeric: "tabular-nums",
+                }}
               >
-                {date.getMonth() + 1}/{date.getDate()}
+                {date.getDate()}
               </span>
             </button>
           );
         })}
       </div>
 
-      <button
-        onClick={handleNextWeek}
-        aria-label="Next week"
-        className="rounded-full p-2 text-ink-mute transition hover:bg-border/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-      >
-        ›
-      </button>
+      {showWeekNav && (
+        <button
+          type="button"
+          onClick={() => onDateChange(shiftISO(entryDate, 7))}
+          className="btn btn-icon btn-secondary"
+          aria-label="Next week"
+          style={{ flex: "none" }}
+        >
+          ›
+        </button>
+      )}
     </div>
   );
 }
-
-export default DateSelection;
