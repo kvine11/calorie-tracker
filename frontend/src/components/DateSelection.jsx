@@ -2,9 +2,31 @@ import { iso, shiftISO, weekOf } from "../dates.js";
 
 const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
-// One week of day pills. Two instances exist at once when a meal is expanded:
-// the page-level strip that drives which day is loaded, and the one inside a
-// meal's detail view that moves that single meal to another day.
+/**
+ * A row of seven day buttons covering one week, with optional arrows to page
+ * between weeks.
+ *
+ * Two of these can be on screen at the same time, meaning different things. The
+ * one in the Today header (with showWeekNav turned on) chooses which day's meals
+ * are loaded. The compact one inside an expanded meal moves that single meal to
+ * another day. Same component, different purpose, decided entirely by props.
+ *
+ * It is a fully controlled component, meaning it holds no state of its own. The
+ * week it displays is calculated from whatever date it is handed, which gives a
+ * useful side effect: selecting a day in a different week automatically pages
+ * the strip to that week, because the date it anchors on moved.
+ *
+ * Every date here is a "yyyy-MM-dd" string, parsed only through dates.js.
+ * Passing a date-only string straight to new Date() would shift the day backward
+ * in US timezones.
+ *
+ * @param {object} props
+ * @param {string} props.entryDate The selected day, and the date the week is calculated from.
+ * @param {(date: string) => void} props.onDateChange Called by a day button or a week arrow.
+ * @param {number} [props.weekStartsOn=0] 0 for Sunday, 1 for Monday, from Settings.
+ * @param {boolean} [props.showWeekNav=false] Show the arrows, which move by a whole week.
+ * @param {boolean} [props.compact=false] Smaller fixed-width buttons that wrap, for the narrow meal card.
+ */
 export default function DateSelection({
   entryDate,
   onDateChange,

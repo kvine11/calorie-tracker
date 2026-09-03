@@ -4,9 +4,39 @@ import { parseISO, shiftISO, todayISO } from "../dates.js";
 
 const DAYS_SHOWN = 7;
 
-// The backend only answers one day at a time (GET /api/meals/date/{date}), so a
-// week is seven of those in parallel. A real range query lands with the charts
-// version — this view is deliberately built on what already exists.
+/**
+ * The last seven days shown as one bar per day, most recent first. This is the
+ * first screen in the app that shows more than a single day at a time.
+ *
+ * THE IMPLEMENTATION TRADEOFF, which is the interesting part of this component:
+ * the backend only knows how to return one day at a time
+ * (GET /api/meals/date/{date}). So this fires seven of those requests in
+ * parallel with Promise.all and assembles the week on the frontend.
+ *
+ * That was a deliberate choice to build this screen without touching the
+ * backend. The cost is seven round trips where one would do. The proper fix is a
+ * date-range query on the repository (findByDateBetween), plus a GROUP BY / SUM
+ * aggregation so the database totals each day instead of sending every row. That
+ * work belongs to the charts version, and this component collapses to a single
+ * request once it exists.
+ *
+ * Each request has its own .catch that returns an empty array, so one failed day
+ * shows up as an empty day rather than breaking the entire week.
+ *
+ * The bars are scaled against the highest day in the visible week, not against a
+ * goal, so the tallest bar is always full. It shows days relative to each other,
+ * not achievement.
+ *
+ * Clicking a day selects it and jumps to the Today screen. This is the only
+ * place in the app where one screen navigates to another on the user's behalf.
+ *
+ * Because App unmounts this screen when you navigate away, the data effect runs
+ * again on every visit, so these totals are never stale.
+ *
+ * @param {object} props
+ * @param {string} props.entryDate Drawn in the accent color if it falls inside the visible week.
+ * @param {(date: string) => void} props.onOpenDay Selects that day and switches to Today.
+ */
 export default function HistoryView({ entryDate, onOpenDay }) {
   const [days, setDays] = useState([]);
   const today = todayISO();

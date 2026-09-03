@@ -2,6 +2,29 @@ import { useState } from "react";
 import FoodItem from "./FoodItem.jsx";
 import { SEG_COLORS } from "./CalorieRing.jsx";
 
+/**
+ * Renders the day's meals as a list of rows, or a message when the day is empty.
+ *
+ * It owns `expandedId`, so only one meal can be open for editing at a time.
+ * Opening a second row closes the first. Without that, a day with eight meals
+ * could turn into eight open forms stacked down the page.
+ *
+ * This is also the layer that attaches each meal's id to the callbacks. FoodItem
+ * calls onSave(updates) knowing nothing about ids, and this wraps it into
+ * onUpdate(meal.id, updates). That keeps the child component simple and matches
+ * how delete has worked since v1. Each wrapper also clears expandedId, so acting
+ * on a meal closes its form.
+ *
+ * @param {object} props
+ * @param {Array<{id: number, name: string, calories: number, date: string}>} props.meals
+ * @param {number} props.weekStartsOn Passed down to each open row's date picker.
+ * @param {number|null} props.hoverId Shared with CalorieRing through TodayView.
+ * @param {(id: number|null) => void} props.onHover
+ * @param {(id: number, updates: object) => void} props.onUpdate
+ * @param {(meal: object) => void} props.onDelete
+ * @param {(meal: object) => void} props.onDuplicate
+ * @param {(query: string) => Promise<Array>} props.onSearch
+ */
 export default function MealList({
   meals,
   weekStartsOn,

@@ -2,8 +2,27 @@ import { useState } from "react";
 import { useFoodSearch } from "../hooks.js";
 import { shortDate } from "../dates.js";
 
-// The full-width version of the same search the log form does inline — room for
-// long database names, and one tap adds straight to the selected day.
+/**
+ * A full-page version of the same food search the add form does inline.
+ *
+ * It can do two things the inline version cannot: it has room for the long,
+ * qualified names the food database returns, and it shows a deeper list (20
+ * results against the form's 6).
+ *
+ * One tap adds the food straight to the selected day using the database's
+ * calorie figure. The tradeoff for that speed is that there is no calorie field
+ * here, so an unusual portion has to be corrected afterward from the meal's
+ * Details view on Today.
+ *
+ * The empty state points back to manual entry instead of dead-ending, which is
+ * the same promise the whole search feature is built on: not finding a food
+ * never stops you from logging it.
+ *
+ * @param {object} props
+ * @param {string} props.entryDate The day an Add lands on, named in the subheading so it is never a surprise.
+ * @param {(query: string) => Promise<Array>} props.onSearch
+ * @param {(name: string, calories: number) => void} props.onAdd
+ */
 export default function SearchView({ entryDate, onSearch, onAdd }) {
   const [query, setQuery] = useState("");
   const { suggestions: results, isSearching } = useFoodSearch(query, { onSearch, limit: 20 });

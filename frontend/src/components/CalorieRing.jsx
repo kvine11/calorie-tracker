@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { useCountUp } from "../hooks.js";
 
-// One arc per meal, so the ring reads as the day's composition rather than a
-// single progress bar. Colours cycle through the two accents.
+/**
+ * The arc colors, cycled through by position.
+ *
+ * This is exported because MealList reads the same array to color each row's
+ * dot. That shared position is the only thing connecting a meal row to its arc
+ * in the ring, so both components have to walk the meals array in the same
+ * order. Change the ordering in one and the colors silently stop matching.
+ *
+ * @type {string[]}
+ */
 export const SEG_COLORS = [
   "var(--color-accent-500)",
   "var(--color-accent-2-500)",
@@ -15,6 +23,47 @@ export const SEG_COLORS = [
 const RADIUS = 88;
 const CIRC = 2 * Math.PI * RADIUS;
 
+/**
+ * The day's calories drawn as a segmented donut chart: one arc per meal, sized
+ * by that meal's share of the day, with the running total in the middle and a
+ * legend underneath listing each meal and its percentage.
+ *
+ * This replaced the earlier CalorieSummary component, which was just a number
+ * and a label.
+ *
+ * One thing to be clear about: this shows composition, not progress. There is no
+ * goal line to fill up, because the app has no concept of a daily calorie target
+ * yet. A complete ring means "here are the day's meals in proportion", not "you
+ * are done for the day".
+ *
+ *
+ * HOW THE ARCS ARE DRAWN
+ *
+ * Each arc is a single SVG circle using strokeDasharray, which takes a pattern
+ * of dash length and gap length. Setting the dash to exactly the length this
+ * meal should occupy, and the gap to the full circumference, leaves just one
+ * visible segment. strokeDashoffset then rotates that segment to start where the
+ * previous one ended, and the `consumed` variable accumulates that running
+ * position as the arcs are built.
+ *
+ *
+ * TWO SEPARATE ANIMATIONS
+ *
+ * 1. `progress` sweeps from 0 to 1 once when the component mounts, drawing the
+ *    arcs on. TodayView passes entryDate as a React `key`, which forces a
+ *    remount whenever the day changes, so each new day draws itself in rather
+ *    than morphing out of the previous day's shape.
+ *
+ * 2. The number in the center animates through useCountUp on every change,
+ *    without remounting. So adding a meal counts the number up, while switching
+ *    days redraws the whole ring.
+ *
+ * @param {object} props
+ * @param {Array<{id: number, name: string, calories: number}>} props.meals Arc order matches list order.
+ * @param {number} props.total Calculated by TodayView; each arc is a share of it.
+ * @param {number|null} props.hoverId The hovered meal — thickens its arc and dims the others.
+ * @param {(id: number|null) => void} props.onHover Reported by the legend rows.
+ */
 export default function CalorieRing({ meals, total, hoverId, onHover }) {
   // Sweeps 0 → 1 once per mount; the parent remounts this on a date change so
   // each day's ring draws itself in.
@@ -33,6 +82,11 @@ export default function CalorieRing({ meals, total, hoverId, onHover }) {
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  // Build one arc per meal. `consumed` tracks how much of the circle has been
+  // used so far, which becomes the next arc's starting offset. A few pixels are
+  // trimmed off every arc so neighbouring segments read as separate rather than
+  // one continuous band, and that trim is skipped when there is only one meal,
+  // since there is nothing to separate it from.
   let consumed = 0;
   const arcs = meals.map((meal, index) => {
     const share = total ? meal.calories / total : 0;

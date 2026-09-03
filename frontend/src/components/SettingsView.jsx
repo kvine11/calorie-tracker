@@ -10,6 +10,20 @@ const hintStyle = {
   color: "color-mix(in srgb, var(--color-text) 55%, transparent)",
 };
 
+/**
+ * A radio button group styled to look like a segmented control.
+ *
+ * These are real <input type="radio"> elements underneath the styling, so
+ * keyboard arrow-key navigation and screen reader grouping work with no extra
+ * code. Building the same look out of plain divs and click handlers would mean
+ * reimplementing both by hand.
+ *
+ * @param {object} props
+ * @param {string} props.name The shared radio group name.
+ * @param {Array<{value: *, label: string}>} props.options
+ * @param {*} props.value Compared with ===, so options can be numbers or booleans.
+ * @param {(value: *) => void} props.onChange
+ */
 function Segmented({ name, options, value, onChange }) {
   return (
     <div className="seg">
@@ -28,6 +42,24 @@ function Segmented({ name, options, value, onChange }) {
   );
 }
 
+/**
+ * The preferences screen, plus an honest list of what is not built yet.
+ *
+ * Both settings are stored in App rather than here, because both are used
+ * somewhere else. weekStartsOn is read by every date picker in the app, and
+ * confirmBeforeDelete decides which delete path runs. A preference that is
+ * changed in one place and used in another has to live above both of them.
+ *
+ * Neither is persisted. They are ordinary React state, so they reset on page
+ * reload. localStorage is the obvious next step, and storing them per user is
+ * something an accounts layer would eventually take over.
+ *
+ * @param {object} props
+ * @param {number} props.weekStartsOn 0 for Sunday, 1 for Monday.
+ * @param {(value: number) => void} props.onWeekStartsOnChange
+ * @param {boolean} props.confirmBeforeDelete
+ * @param {(value: boolean) => void} props.onConfirmBeforeDeleteChange
+ */
 export default function SettingsView({
   weekStartsOn,
   onWeekStartsOnChange,

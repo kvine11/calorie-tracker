@@ -34,6 +34,20 @@ const soonStyle = {
   cursor: "not-allowed",
 };
 
+/**
+ * One clickable navigation row.
+ *
+ * The active row is filled with the accent color. It also sets
+ * aria-current="page", which is how a screen reader announces "you are here" —
+ * color on its own communicates nothing to someone who is not looking at the
+ * screen.
+ *
+ * @param {object} props
+ * @param {JSX.Element} props.icon
+ * @param {string} props.label
+ * @param {boolean} props.active Whether this is the screen currently showing.
+ * @param {() => void} props.onClick
+ */
 function NavItem({ icon, label, active, onClick }) {
   return (
     <button
@@ -54,8 +68,18 @@ function NavItem({ icon, label, active, onClick }) {
   );
 }
 
-// Items whose backend doesn't exist yet stay visible but inert — the roadmap
-// is part of the interface rather than something hidden until it ships.
+/**
+ * A navigation row for a feature that is not built yet: visible, greyed out,
+ * labeled "soon", and not clickable.
+ *
+ * Showing unfinished features rather than hiding them is deliberate. It tells
+ * anyone looking at the app where it is heading. Trends is the charts version
+ * and Food scan is the photo-recognition version, both planned.
+ *
+ * @param {object} props
+ * @param {JSX.Element} props.icon
+ * @param {string} props.label
+ */
 function SoonItem({ icon, label }) {
   return (
     <div style={soonStyle}>
@@ -68,6 +92,28 @@ function SoonItem({ icon, label }) {
   );
 }
 
+/**
+ * The left navigation rail, always visible. This is the app's only navigation.
+ *
+ * It holds four working destinations, then the not-yet-built features greyed
+ * out, with Settings pinned to the bottom.
+ *
+ * "Quick add" is different from the other three: it is not a screen. It opens
+ * the same overlay that Cmd/Ctrl-K opens. It has a sidebar button because a
+ * keyboard shortcut is invisible to anyone who does not already know about it.
+ *
+ * KNOWN LIMITATION, worth raising before someone else spots it: this sidebar is
+ * desktop-only. It is a fixed 238px wide (190px on smaller screens) and never
+ * collapses, so on a phone it would take up half the screen. The plan is to
+ * replace it with a bottom tab bar below about 700px, since the four items map
+ * onto tabs directly, rather than building and maintaining a separate mobile
+ * layout.
+ *
+ * @param {object} props
+ * @param {"today"|"history"|"search"|"settings"} props.view The current screen.
+ * @param {(view: string) => void} props.onNavigate Switches screens.
+ * @param {() => void} props.onQuickAdd Opens the quick-add overlay.
+ */
 export default function Sidebar({ view, onNavigate, onQuickAdd }) {
   return (
     <aside

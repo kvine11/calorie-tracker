@@ -1,6 +1,24 @@
-// Line icons from the design — one stroke weight, one join style, so they read
-// as a set. `size` is the only thing callers usually change.
+// The app's icon set. Every icon is drawn by hand as SVG paths rather than
+// pulled from an icon library, which keeps the frontend dependency-free and
+// means they all share exactly one visual style.
 
+/**
+ * The shared wrapper every icon in this file is built on: one 24x24 coordinate
+ * grid, one stroke weight, one line-join style, so the icons look like a set
+ * rather than a collection of unrelated drawings.
+ *
+ * The stroke is set to `currentColor`, meaning each icon inherits the text color
+ * of whatever contains it. That is what lets a sidebar item flip its icon to the
+ * background color when it becomes active, without the icon knowing anything
+ * about navigation state.
+ *
+ * Marked aria-hidden because every icon here sits next to a real text label, so
+ * announcing it to a screen reader would just repeat that label.
+ *
+ * @param {object} props
+ * @param {number} [props.size=17] Width and height in pixels.
+ * @param {React.ReactNode} props.children The paths, drawn on the 24x24 grid.
+ */
 function Icon({ size = 17, children }) {
   return (
     <svg
@@ -100,7 +118,18 @@ export function TrashIcon(props) {
   );
 }
 
-// The mark: a two-tone ring, the same shape the day's calories are drawn as.
+/**
+ * The logo in the sidebar: a small two-tone segmented ring.
+ *
+ * It is deliberately the same shape CalorieRing draws the day as, so the logo is
+ * a miniature of the thing the app is actually for. It is built separately from
+ * the Icon wrapper above because it needs its own coordinate grid, the -90
+ * degree rotation that puts the first segment at the top, and fixed segment
+ * lengths rather than inheriting its colors.
+ *
+ * @param {object} props
+ * @param {number} [props.size=28]
+ */
 export function BrandMark({ size = 28 }) {
   return (
     <svg

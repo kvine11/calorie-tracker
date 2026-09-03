@@ -3,8 +3,41 @@ import DateSelection from "./DateSelection.jsx";
 import { TrashIcon } from "./Icons.jsx";
 import { useFoodSearch } from "../hooks.js";
 
-// The expanded half of a row. Mounted only while open, so its drafts always
-// start from the meal as it currently is — no stale values after a cancel.
+/**
+ * The expanded form inside a meal row: edit the name, calories or date, or
+ * duplicate and delete the meal.
+ *
+ * This is a separate component that only exists while the row is open, and that
+ * is the whole trick. Its draft values are set from the meal when it mounts, so
+ * closing and reopening always starts fresh from the current values. The
+ * previous version kept this state alive permanently and had to reset it by
+ * hand, which is where a bug came from: cancelling an edit and reopening the row
+ * showed the abandoned draft values instead of the real ones.
+ *
+ * The date picker in here is a second, completely separate instance of
+ * DateSelection. The one at the top of the page controls which day you are
+ * looking at; this one moves this single meal to a different day. Saving a new
+ * date makes the meal disappear from the current list on the next refetch,
+ * without any code that specifically handles "this meal moved away".
+ *
+ * Search matches appear as wrapped chips below the fields rather than a floating
+ * dropdown. This card is narrow, and a dropdown here used to cover the calorie
+ * field, the buttons and the date picker. MealForm still uses a real dropdown
+ * because it has the room for one.
+ *
+ * @param {object} props
+ * @param {{id: number, name: string, calories: number, date: string}} props.meal
+ * @param {number} props.weekStartsOn
+ * @param {(query: string) => Promise<Array>} props.onSearch
+ * @param {(updates: {name: string, calories: number, date: string}) => void} props.onSave
+ *   Called with one object rather than separate arguments, matching what api.js's
+ *   updateMeal(id, updates) expects. Note calories is converted with Number()
+ *   first: a number input still hands back a string, so without that conversion
+ *   the PUT body would send "550" instead of 550.
+ * @param {() => void} props.onClose
+ * @param {() => void} props.onDelete
+ * @param {() => void} props.onDuplicate
+ */
 function MealDetail({ meal, weekStartsOn, onSearch, onSave, onClose, onDelete, onDuplicate }) {
   const [draftName, setDraftName] = useState(meal.name);
   const [draftCalories, setDraftCalories] = useState(meal.calories);
@@ -165,6 +198,34 @@ function MealDetail({ meal, weekStartsOn, onSearch, onSave, onClose, onDelete, o
   );
 }
 
+/**
+ * A single meal, shown either as a compact row or expanded into its edit form.
+ *
+ * Collapsed, it shows a colored dot matching its arc in the ring, the name, the
+ * calorie count, a Details button and a delete button. Hovering anywhere on the
+ * row reports up to TodayView, which highlights the matching arc.
+ *
+ * The row itself holds no state at all. Whether it is open is MealList's
+ * business, and every piece of editing state belongs to MealDetail, which only
+ * exists while the row is open.
+ *
+ * The delete button calls up to App rather than deleting directly, because App
+ * is where the confirm-or-undo preference gets checked.
+ *
+ * @param {object} props
+ * @param {{id: number, name: string, calories: number, date: string}} props.meal
+ * @param {string} props.color Its color from SEG_COLORS — the dot that ties this row to its arc.
+ * @param {boolean} props.isExpanded
+ * @param {boolean} props.isHovered Driven by the shared hoverId, so the ring's legend can highlight this row too.
+ * @param {number} props.weekStartsOn
+ * @param {() => void} props.onExpand
+ * @param {() => void} props.onCollapse
+ * @param {(id: number|null) => void} props.onHover
+ * @param {(updates: object) => void} props.onSave MealList attaches the id.
+ * @param {() => void} props.onDelete
+ * @param {() => void} props.onDuplicate
+ * @param {(query: string) => Promise<Array>} props.onSearch
+ */
 export default function FoodItem({
   meal,
   color,

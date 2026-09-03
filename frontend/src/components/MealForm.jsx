@@ -2,6 +2,30 @@ import { useRef, useState } from "react";
 import { useClickOutside, useFoodSearch } from "../hooks.js";
 import { CameraIcon } from "./Icons.jsx";
 
+/**
+ * The add-a-meal form on the Today screen: food name, calories, Add.
+ *
+ * Typing two or more characters searches the food database and shows matches in
+ * a dropdown floating under the input. A floating dropdown works here because
+ * this form sits at the top of a wide column with nothing underneath it to
+ * cover. That is not true inside a meal card, which is why FoodItem shows chips
+ * instead of reusing this markup. The two share the search hook, not the layout.
+ *
+ * Picking a match fills in both fields but leaves calories editable, on purpose:
+ * the portion you actually ate is rarely the portion the database assumed.
+ *
+ * Typing a name that matches nothing and entering the calories by hand is a
+ * fully supported path, not a fallback. The search speeds up manual entry; it
+ * never stands in front of it.
+ *
+ * There is no date field here. The meal is stamped with whichever day is
+ * selected in the picker above, and App supplies that date.
+ *
+ * @param {object} props
+ * @param {(name: string, calories: number) => void} props.onAdd
+ *   calories is converted with Number() first, since a number input returns a string.
+ * @param {(query: string) => Promise<Array>} props.onSearch
+ */
 export default function MealForm({ onAdd, onSearch }) {
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
