@@ -2,6 +2,8 @@ import { useRef, useState } from "react";
 import DateSelection from "./DateSelection.jsx";
 import { TrashIcon } from "./Icons.jsx";
 import { useFoodSearch } from "../hooks.js";
+import MacroLine from "./MacroLine.jsx";
+import { MACROS, hasMacros, scaleMacro } from "../macros.js";
 
 // The expanded half of a row. Mounted only while open, so its drafts always
 // start from the meal as it currently is — no stale values after a cancel.
@@ -14,6 +16,14 @@ function MealDetail({ meal, weekStartsOn, onSearch, onSave, onClose, onDelete, o
   const dismissedRef = useRef(true);
 
   const { suggestions: matches } = useFoodSearch(draftName, { onSearch, limit: 5 });
+
+  // Macros aren't editable, but they do move when the calories do — the backend
+  // rescales them on save. Previewing that here means the number you see while
+  // dragging the calorie field is the number you'll get.
+  const ratio = meal.calories && draftCalories ? Number(draftCalories) / meal.calories : 1;
+  const preview = Object.fromEntries(
+    MACROS.map(({ key }) => [key, scaleMacro(meal[key], ratio)]),
+  );
   const suggestions = dismissedRef.current
     ? []
     : matches.filter(
@@ -87,6 +97,47 @@ function MealDetail({ meal, weekStartsOn, onSearch, onSave, onClose, onDelete, o
         </div>
       </div>
 
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "var(--space-2)",
+          padding: "var(--space-2) var(--space-3)",
+          borderRadius: "var(--radius-sm)",
+          background: "color-mix(in srgb, var(--color-text) 4%, transparent)",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "color-mix(in srgb, var(--color-text) 55%, transparent)",
+          }}
+        >
+          Macros
+        </span>
+        {hasMacros(meal) ? (
+          <>
+            <MacroLine food={preview} size={13} />
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: 11,
+                color: "color-mix(in srgb, var(--color-text) 45%, transparent)",
+              }}
+            >
+              {ratio === 1 ? "from the food database" : "rescaled to the new calories"}
+            </span>
+          </>
+        ) : (
+          <span style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 50%, transparent)" }}>
+            — this meal was entered by hand
+          </span>
+        )}
+      </div>
+
       {suggestions.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, animation: "riseIn 160ms ease both" }}>
           <div style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 70%, transparent)" }}>
@@ -126,6 +177,7 @@ function MealDetail({ meal, weekStartsOn, onSearch, onSave, onClose, onDelete, o
                 >
                   {suggestion.calories} cal
                 </span>
+                <MacroLine food={suggestion} size={11} />
               </button>
             ))}
           </div>

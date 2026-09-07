@@ -8,11 +8,12 @@ export async function getMealsByDate(date) {
 }
 
 
-export async function addMeal({ name, calories, date }) {
+
+export async function addMeal({ name, calories, protein, carbs, fats, date }) {
   const res = await fetch(BASE_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, calories, date }),
+    body: JSON.stringify({ name, calories, protein, carbs, fats, date }),
   });
   if (!res.ok) throw new Error("Failed to add meal");
 }

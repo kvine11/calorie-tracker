@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFoodSearch } from "../hooks.js";
 import { shortDate } from "../dates.js";
+import MacroLine from "./MacroLine.jsx";
 
 // The full-width version of the same search the log form does inline — room for
 // long database names, and one tap adds straight to the selected day.
@@ -56,8 +57,9 @@ export default function SearchView({ entryDate, onSearch, onAdd }) {
               padding: "var(--space-3) var(--space-4)",
             }}
           >
-            <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600 }}>
-              {result.foodName}
+            <span style={{ display: "flex", flexDirection: "column", gap: 3, flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>{result.foodName}</span>
+              <MacroLine food={result} size={12.5} />
             </span>
             <span
               style={{
@@ -72,7 +74,7 @@ export default function SearchView({ entryDate, onSearch, onAdd }) {
               type="button"
               className="btn btn-primary"
               style={{ fontSize: 13 }}
-              onClick={() => onAdd(result.foodName, result.calories)}
+              onClick={() => onAdd(result.foodName, result.calories, result.protein, result.carbs, result.fats)}
             >
               Add
             </button>
