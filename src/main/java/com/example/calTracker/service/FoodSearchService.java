@@ -35,22 +35,17 @@ public class FoodSearchService {
             @JsonProperty("food_name") String foodName,
             @JsonProperty("food_description") String foodDescription,
             @JsonProperty("food_type") String foodType,
-            @JsonProperty("brand_name") String brandName
-            ) {
+            @JsonProperty("brand_name") String brandName) {
 
     }
 
     record Foods(
-            @JsonProperty("food")
-            @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
-            List<FoodEntry> food
-            ) {
+            @JsonProperty("food") @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY) List<FoodEntry> food) {
 
     }
 
     record SearchResponse(
-            @JsonProperty("foods") Foods foods
-            ) {
+            @JsonProperty("foods") Foods foods) {
 
     }
 
@@ -89,27 +84,47 @@ public class FoodSearchService {
         String token = getValidAccessToken();
 
         SearchResponse response = restClient.get()
-        .uri("https://platform.fatsecret.com/rest/foods/search/v1?search_expression={query}&format=json", query)
-        .headers(headers -> headers.setBearerAuth(token))
-        .retrieve()
-        .body(SearchResponse.class);
+                .uri("https://platform.fatsecret.com/rest/foods/search/v1?search_expression={query}&format=json", query)
+                .headers(headers -> headers.setBearerAuth(token))
+                .retrieve()
+                .body(SearchResponse.class);
 
         List<FoodSearch> results = new ArrayList<>();
-        
-        if(response.foods() == null || response.foods().food() == null) {
+
+        if (response.foods() == null || response.foods().food() == null) {
             return results;
         }
-        for(FoodEntry entry : response.foods().food()) {
+        for (FoodEntry entry : response.foods().food()) {
 
             Matcher matcher = Pattern.compile("Calories:\\s*(\\d+)kcal").matcher(entry.foodDescription());
             if(!matcher.find()) {
-                continue;
+                continue; // Skip this entry if calories are not found
             }
+
             int calories = Integer.parseInt(matcher.group(1));
-            results.add(new FoodSearch(entry.foodName(), calories));
+
+
+
+
+            Double carbs = parseMacros(entry.foodDescription(), "Carbs");
+            Double protein = parseMacros(entry.foodDescription(), "Protein");
+            Double fats = parseMacros(entry.foodDescription(), "Fat");
+
+            results.add(new FoodSearch(entry.foodName(), calories, carbs, protein, fats));
         }
 
         return results;
+    }
+
+    private Double parseMacros(String foodDescription, String macro) {
+      
+            Matcher matcher = Pattern.compile(macro + ":\\s*(\\d+(?:\\.\\d+)?)g").matcher(foodDescription);
+            if (matcher.find()) {
+                return Double.parseDouble(matcher.group(1));
+            }
+            return null;
+        
+
     }
 
 }

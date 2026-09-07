@@ -1,10 +1,13 @@
 import { useRef, useState } from "react";
 import { useClickOutside, useFoodSearch } from "../hooks.js";
 import { CameraIcon } from "./Icons.jsx";
+import MacroLine from "./MacroLine.jsx";
+import { scaleMacro } from "../macros.js";
 
 export default function MealForm({ onAdd, onSearch }) {
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
+  const [macros, setMacros] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const fieldRef = useRef(null);
 
@@ -15,9 +18,21 @@ export default function MealForm({ onAdd, onSearch }) {
     event.preventDefault();
     if (!name.trim() || !calories) return;
 
-    onAdd(name.trim(), Number(calories));
+    // Macros aren't typed — they come from the food that was picked, scaled to
+    // whatever portion the calorie field ended up at. Nothing picked means the
+    // macros are genuinely unknown, which is null, not zero.
+    const ratio = macros && macros.calories ? Number(calories) / macros.calories : 1;
+
+    onAdd(
+      name.trim(),
+      Number(calories),
+      scaleMacro(macros?.protein, ratio),
+      scaleMacro(macros?.carbs, ratio),
+      scaleMacro(macros?.fats, ratio),
+    );
     setName("");
     setCalories("");
+    setMacros(null);
     setIsOpen(false);
   }
 
@@ -26,6 +41,7 @@ export default function MealForm({ onAdd, onSearch }) {
   function handlePick(suggestion) {
     setName(suggestion.foodName);
     setCalories(suggestion.calories);
+    setMacros(suggestion);
     setIsOpen(false);
   }
 
@@ -59,6 +75,7 @@ export default function MealForm({ onAdd, onSearch }) {
             onChange={(event) => {
               setName(event.target.value);
               setIsOpen(true);
+              setMacros(null);
             }}
             onFocus={() => setIsOpen(true)}
           />
@@ -104,9 +121,13 @@ export default function MealForm({ onAdd, onSearch }) {
                       textAlign: "left",
                     }}
                   >
-                    <span>{suggestion.foodName}</span>
+                    <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                      <span>{suggestion.foodName}</span>
+                      <MacroLine food={suggestion} />
+                    </span>
                     <span
                       style={{
+                        flex: "none",
                         fontVariantNumeric: "tabular-nums",
                         color: "color-mix(in srgb, var(--color-text) 55%, transparent)",
                       }}

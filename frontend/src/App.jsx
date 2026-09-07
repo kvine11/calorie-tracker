@@ -51,9 +51,9 @@ export default function App() {
     setMeals(await getMealsByDate(entryDate));
   }
 
-  async function handleAdd(name, calories, date = entryDate) {
+  async function handleAdd(name, calories, protein, carbs, fats, date = entryDate) {
     try {
-      await addMeal({ name, calories, date });
+      await addMeal({ name, calories, protein, carbs, fats, date });
       await refresh();
     } catch (err) {
       console.error(err);
@@ -98,7 +98,7 @@ export default function App() {
     clearTimeout(undoTimer.current);
     setPendingDelete(null);
     // Re-posted, so it returns with a fresh id — the row is back, not the row.
-    await handleAdd(meal.name, meal.calories, meal.date);
+    await handleAdd(meal.name, meal.calories, meal.protein, meal.carbs, meal.fats, meal.date);
   }
 
   // Stable so the search hooks don't re-fire on every parent render.
@@ -133,7 +133,7 @@ export default function App() {
             onAdd={handleAdd}
             onUpdate={handleUpdate}
             onDelete={requestDelete}
-            onDuplicate={(meal) => handleAdd(meal.name, meal.calories, todayISO())}
+            onDuplicate={(meal) => handleAdd(meal.name, meal.calories, meal.protein, meal.carbs, meal.fats, todayISO())}
             onSearch={handleSearch}
           />
         )}

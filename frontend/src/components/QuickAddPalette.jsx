@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFoodSearch } from "../hooks.js";
 import { shortDate } from "../dates.js";
+import MacroLine from "./MacroLine.jsx";
 
 // Cmd/Ctrl-K anywhere in the app: search, hit a row, it's logged to the
 // selected day. No calorie field — that's what the full form on Today is for.
@@ -38,7 +39,7 @@ export default function QuickAddPalette({ entryDate, onSearch, onAdd, onClose })
               type="button"
               className="suggestion"
               onClick={() => {
-                onAdd(suggestion.foodName, suggestion.calories);
+                onAdd(suggestion.foodName, suggestion.calories, suggestion.protein, suggestion.carbs, suggestion.fats);
                 onClose();
               }}
               style={{
@@ -57,9 +58,13 @@ export default function QuickAddPalette({ entryDate, onSearch, onAdd, onClose })
                 textAlign: "left",
               }}
             >
-              <span>{suggestion.foodName}</span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                <span>{suggestion.foodName}</span>
+                <MacroLine food={suggestion} />
+              </span>
               <span
                 style={{
+                  flex: "none",
                   fontVariantNumeric: "tabular-nums",
                   fontSize: 13,
                   color: "color-mix(in srgb, var(--color-text) 55%, transparent)",

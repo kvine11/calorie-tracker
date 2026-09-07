@@ -20,6 +20,9 @@ public class MealEntry {
     private long id;
     private String name;
     private int calories;
+    private Double carbs;
+    private Double protein;
+    private Double fats;
 
     @Column(name = "date")
     private LocalDate date;
@@ -33,10 +36,13 @@ public class MealEntry {
     // assigns it). Disabling that keeps this constructor for internal Java use
     // (e.g. seeding sample data) while JSON deserialization uses MealEntry() + setters.
     @JsonCreator(mode = JsonCreator.Mode.DISABLED)
-    public MealEntry(long id, String name, int calories, LocalDate date) {
+    public MealEntry(long id, String name, int calories, Double carbs, Double protein, Double fats, LocalDate date) {
         this.id = id;
         this.name = name;
         this.calories = calories;
+        this.carbs = carbs;
+        this.protein = protein;
+        this.fats = fats;
         this.date = date;
     }
 
@@ -69,5 +75,29 @@ public class MealEntry {
 
     public void setCalories(int calories) {
         this.calories = calories;
+    }
+
+    public Double getCarbs() {
+        return carbs;
+    }
+
+    public void setCarbs(Double carbs) {
+        this.carbs = carbs;
+    }
+
+    public Double getProtein() {
+        return protein;
+    }
+
+    public void setProtein(Double protein) {
+        this.protein = protein;
+    }
+
+    public Double getFats() {
+        return fats;
+    }
+
+    public void setFats(Double fats) {
+        this.fats = fats;
     }
 }
