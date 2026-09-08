@@ -183,3 +183,14 @@ psql -U postgres -h localhost                          # connect as superuser (f
 ```
 
 Java 26, Spring Boot 4.1.0. Run backend + frontend + Postgres (as a Windows service, starts automatically) for the app to work end-to-end. `frontend/` is a plain sibling folder to `pom.xml` inside this same repo — not wired into the Maven build (no `frontend-maven-plugin`), matching the roadmap's v3 plan to deploy backend and frontend separately (Render/Railway + Vercel) rather than bundle into one jar. Revisit this structure if that deploy plan changes.
+
+## Design System
+
+Always read DESIGN.md before making any visual or UI decisions. All font choices,
+colors, spacing, aesthetic direction and motion rules are defined there. Do not
+deviate without explicit user approval. In QA mode, flag any code that doesn't
+match DESIGN.md.
+
+The direction is **Oxide** (dark, jade accent, Familjen Grotesk), adopted
+2026-09-07, replacing the "Organic" warm-paper system described under "Frontend
+design" below. That section is kept for history; DESIGN.md supersedes it.

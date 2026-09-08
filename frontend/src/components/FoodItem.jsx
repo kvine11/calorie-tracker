@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { motion } from "framer-motion";
 import DateSelection from "./DateSelection.jsx";
 import { TrashIcon } from "./Icons.jsx";
 import { useFoodSearch } from "../hooks.js";
@@ -232,7 +233,15 @@ export default function FoodItem({
   onSearch,
 }) {
   return (
-    <div
+    // `layout` is what makes the rows below a new meal slide down rather than
+    // jump. The exit animation is the reason this needs framer-motion at all —
+    // CSS can't animate an element that React is removing.
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0, transition: { duration: 0.2, ease: "easeIn" } }}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1], layout: { type: "spring", stiffness: 380, damping: 34 } }}
       className="card"
       onMouseEnter={() => onHover(meal.id)}
       onMouseLeave={() => onHover(null)}
@@ -241,8 +250,8 @@ export default function FoodItem({
         padding: "var(--space-3) var(--space-4)",
         background: isHovered ? "var(--color-neutral-200)" : "var(--color-surface)",
         boxShadow: "var(--shadow-sm)",
-        animation: "riseIn 260ms ease both",
         transition: "background 160ms ease",
+        overflow: "hidden",
       }}
     >
       {isExpanded ? (
@@ -305,6 +314,6 @@ export default function FoodItem({
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

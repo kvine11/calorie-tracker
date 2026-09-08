@@ -1,16 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCountUp } from "../hooks.js";
 import { MACROS, energySplit, macroTotals } from "../macros.js";
 
 // One arc per meal, so the ring reads as the day's composition rather than a
-// single progress bar. Colours cycle through the two accents.
+// single progress bar. One hue in six luminance steps, brightest first — six
+// categorical colours would turn a segmented ring into a clown pie and cost it
+// its single colour memory. Meal identity is carried by the legend and by hover,
+// not by arc colour alone. See DESIGN.md.
 export const SEG_COLORS = [
+  "var(--color-accent-800)",
+  "var(--color-accent-600)",
   "var(--color-accent-500)",
-  "var(--color-accent-2-500)",
   "var(--color-accent-400)",
-  "var(--color-accent-2-600)",
-  "var(--color-accent-700)",
-  "var(--color-accent-2-400)",
+  "var(--color-accent-300)",
+  "var(--color-accent-200)",
 ];
 
 const RADIUS = 88;
@@ -26,7 +29,18 @@ export default function CalorieRing({ meals, total, hoverId, onHover }) {
   // Which macro the pointer is on — the bar and its legend row drive the same
   // state, so hovering either lights up both.
   const [macroHover, setMacroHover] = useState(null);
+  // Remounting the number on a total change restarts its keyframe. One pulse,
+  // and nothing else on the page is ever allowed to scale.
+  const [pulseKey, setPulseKey] = useState(0);
+  const prevTotal = useRef(total);
   const displayTotal = Math.round(useCountUp(total));
+
+  useEffect(() => {
+    if (total !== prevTotal.current) {
+      prevTotal.current = total;
+      setPulseKey((k) => k + 1);
+    }
+  }, [total]);
 
   useEffect(() => {
     const start = performance.now();
@@ -44,14 +58,14 @@ export default function CalorieRing({ meals, total, hoverId, onHover }) {
   const arcs = meals.map((meal, index) => {
     const share = total ? meal.calories / total : 0;
     const length = share * CIRC * progress;
-    const gap = meals.length > 1 ? 4 : 0;
+    const gap = meals.length > 1 ? 6 : 0;
     const offset = -consumed * CIRC * progress;
     consumed += share;
     const isActive = hoverId === meal.id;
     return {
       id: meal.id,
       color: SEG_COLORS[index % SEG_COLORS.length],
-      width: isActive ? 26 : 20,
+      width: isActive ? 17 : 13,
       opacity: hoverId && !isActive ? 0.45 : 1,
       dash: `${Math.max(0, length - gap)} ${CIRC}`,
       offset,
@@ -83,16 +97,27 @@ export default function CalorieRing({ meals, total, hoverId, onHover }) {
       style={{ alignItems: "center", padding: "var(--space-6) var(--space-4)", gap: "var(--space-3)" }}
     >
       <div style={{ position: "relative", width: 216, height: 216 }}>
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            inset: -20,
+            borderRadius: 999,
+            background: "radial-gradient(circle at 50% 46%, var(--ring-wash), transparent 62%)",
+            pointerEvents: "none",
+          }}
+        />
         <svg width="216" height="216" viewBox="0 0 216 216" style={{ transform: "rotate(-90deg)" }}>
           <circle
             cx="108"
             cy="108"
             r={RADIUS}
             fill="none"
-            stroke="var(--color-neutral-300)"
-            strokeWidth="20"
+            stroke="var(--ring-track)"
+            strokeWidth="13"
           />
-          {arcs.map((arc) => (
+          <circle cx="108" cy="108" r="74" fill="none" stroke="var(--color-divider)" strokeWidth="1" />
+          {arcs.map((arc, index) => (
             <circle
               key={arc.id}
               cx="108"
@@ -101,11 +126,20 @@ export default function CalorieRing({ meals, total, hoverId, onHover }) {
               fill="none"
               stroke={arc.color}
               strokeWidth={arc.width}
-              strokeLinecap="round"
+              strokeLinecap="butt"
               strokeDasharray={arc.dash}
               strokeDashoffset={arc.offset}
               opacity={arc.opacity}
-              style={{ transition: "stroke-width 180ms ease, opacity 180ms ease" }}
+              style={{
+                // Arcs re-sweep rather than snapping when a meal is added or
+                // removed. This is what makes the ring feel like it reacted.
+                transition:
+                  "stroke-dasharray 340ms cubic-bezier(.16,1,.3,1), stroke-dashoffset 340ms cubic-bezier(.16,1,.3,1), stroke-width 180ms ease, opacity 180ms ease",
+                filter:
+                  index === 0
+                    ? "drop-shadow(0 0 7px color-mix(in srgb, var(--color-accent) 32%, transparent))"
+                    : undefined,
+              }}
             />
           ))}
         </svg>
@@ -121,8 +155,10 @@ export default function CalorieRing({ meals, total, hoverId, onHover }) {
           }}
         >
           <div
+            key={pulseKey}
             style={{
               fontFamily: "var(--font-heading)",
+              animation: "numPulse 500ms cubic-bezier(.34,1.56,.64,1)",
               fontSize: 46,
               lineHeight: 1,
               fontVariantNumeric: "tabular-nums",
@@ -252,6 +288,7 @@ export default function CalorieRing({ meals, total, hoverId, onHover }) {
                     style={{
                       width: `${share(key) * progress * 100}%`,
                       background: color,
+                      transition: "width 280ms cubic-bezier(.4,0,.2,1)",
                       cursor: "default",
                       opacity: macroHover && macroHover !== key ? 0.4 : 1,
                       transition: "opacity 180ms ease",

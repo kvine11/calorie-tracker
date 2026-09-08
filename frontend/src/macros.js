@@ -7,21 +7,21 @@ export const MACROS = [
     label: "Protein",
     short: "P",
     kcalPerGram: 4,
-    color: "var(--color-accent-2-700)",
+    color: "#7bdca8",
   },
   {
     key: "carbs",
     label: "Carbs",
     short: "C",
     kcalPerGram: 4,
-    color: "var(--color-accent-600)",
+    color: "#ffc24b",
   },
   {
     key: "fats",
     label: "Fats",
     short: "F",
     kcalPerGram: 9,
-    color: "var(--color-neutral-600)",
+    color: "#8fa0ac",
   },
 ];
 
