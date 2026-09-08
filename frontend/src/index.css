@@ -5,53 +5,64 @@
    app-level overrides that "Calorie Tracker.dc.html" declares in its helmet.
    This file is the source of truth for the look — retune here, not in JSX.
    ───────────────────────────────────────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Familjen+Grotesk:ital,wght@0,400..700;1,400..700&display=swap");
 @import "tailwindcss";
 
 :root {
-  --color-bg: #f5ead8;
-  --color-surface: #ebddc5;
-  --color-text: #201e1d;
-  --color-accent: #c67139;
-  --color-accent-2: #7a8a5e;
-  --color-divider: color-mix(in srgb, #201e1d 16%, transparent);
+  color-scheme: dark;
 
-  /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
-     same step of any role matches the others in visual value. */
-  --color-neutral-100: #f9f4ed;
-  --color-neutral-200: #eee7db;
-  --color-neutral-300: #dcd3c4;
-  --color-neutral-400: #c0b6a5;
-  --color-neutral-500: #a19786;
-  --color-neutral-600: #82796a;
-  --color-neutral-700: #645c50;
-  --color-neutral-800: #474238;
-  --color-neutral-900: #2e2b25;
+  /* Oxide — see DESIGN.md. Cool near-black ground, one jade accent.
+     Every colour in the app resolves through these; no component hardcodes hex. */
+  --color-bg: #0e1113;
+  --color-surface: #161a1d;
+  --color-text: #e6eff1;
+  --color-accent: #2dd4a7;
+  --color-accent-2: #ffc24b;
+  --color-divider: color-mix(in srgb, #e6eff1 12%, transparent);
 
-  --color-accent-100: #fff2eb;
-  --color-accent-200: #ffe1d0;
-  --color-accent-300: #ffc6a5;
-  --color-accent-400: #f6a06b;
-  --color-accent-500: #d67f48;
-  --color-accent-600: #b2622d;
-  --color-accent-700: #8c491a;
-  --color-accent-800: #643312;
-  --color-accent-900: #402310;
+  /* Neutral ramp runs DARK to LIGHT now that the ground is dark: 100 is the
+     ground-adjacent surface, 900 is near-white. Component code reads these by
+     number, so the direction flip is what makes the whole app invert without
+     touching a single component. */
+  --color-neutral-100: #161a1d;
+  --color-neutral-200: #1e2327;
+  --color-neutral-300: #272d32;
+  --color-neutral-400: #39424a;
+  --color-neutral-500: #55626c;
+  --color-neutral-600: #778791;
+  --color-neutral-700: #9dabb4;
+  --color-neutral-800: #c3cfd6;
+  --color-neutral-900: #e6eff1;
 
-  --color-accent-2-100: #f0fae1;
-  --color-accent-2-200: #e1eecc;
-  --color-accent-2-300: #ccdbb2;
-  --color-accent-2-400: #aebf92;
-  --color-accent-2-500: #8fa073;
-  --color-accent-2-600: #728157;
-  --color-accent-2-700: #56633f;
-  --color-accent-2-800: #3d472b;
-  --color-accent-2-900: #272e1b;
+  --color-accent-100: #08201a;
+  --color-accent-200: #0a4433;
+  --color-accent-300: #10644c;
+  --color-accent-400: #178768;
+  --color-accent-500: #20aa85;
+  --color-accent-600: #2dd4a7;
+  --color-accent-700: #5ee3c0;
+  --color-accent-800: #7ff0d2;
+  --color-accent-900: #a8f7e2;
 
-  /* The design overrides the system's display face (Caprasimo) with Quicksand. */
-  --font-heading: "Quicksand", system-ui, sans-serif;
-  --font-heading-weight: 600;
-  --font-body: "Figtree", system-ui, sans-serif;
+  --color-accent-2-100: #2a1f08;
+  --color-accent-2-200: #4a3610;
+  --color-accent-2-300: #6b4e17;
+  --color-accent-2-400: #9a7222;
+  --color-accent-2-500: #c9962d;
+  --color-accent-2-600: #ffc24b;
+  --color-accent-2-700: #ffd478;
+  --color-accent-2-800: #ffe3a5;
+  --color-accent-2-900: #fff1d2;
+
+  /* The ring's own tokens. The wash is what makes the ring appear to light its
+     own card, which is the whole reason it reads as the hero. */
+  --ring-track: color-mix(in srgb, #e6eff1 9%, transparent);
+  --ring-wash: color-mix(in srgb, #2dd4a7 6%, transparent);
+  --on-accent: #08110e;
+
+  --font-heading: "Familjen Grotesk", system-ui, sans-serif;
+  --font-heading-weight: 700;
+  --font-body: "Familjen Grotesk", system-ui, sans-serif;
 
   --space-1: 4.4px;
   --space-2: 8.8px;
@@ -64,10 +75,11 @@
   --radius-md: 16px;
   --radius-lg: 28px;
 
-  /* Elevation — soft ink-tinted shadows lifted off the warm ground. */
-  --shadow-sm: 0 1px 2px color-mix(in srgb, #2e2b25 14%, transparent);
-  --shadow-md: 0 3px 10px color-mix(in srgb, #2e2b25 16%, transparent);
-  --shadow-lg: 0 12px 32px color-mix(in srgb, #2e2b25 22%, transparent);
+  /* Drop shadows are invisible on near-black. Elevation is a lightness step plus
+     a 1px lit top edge instead — a bevel catching light from above. */
+  --shadow-sm: inset 0 1px 0 color-mix(in srgb, #e6eff1 7%, transparent);
+  --shadow-md: inset 0 1px 0 color-mix(in srgb, #e6eff1 9%, transparent);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.55), inset 0 1px 0 color-mix(in srgb, #e6eff1 10%, transparent);
 }
 
 *,
@@ -127,7 +139,7 @@ a {
   text-underline-offset: 3px;
 }
 a:hover {
-  color: var(--color-accent-700);
+  color: var(--color-accent-800);
 }
 button {
   cursor: pointer;
@@ -181,10 +193,10 @@ img {
   color: var(--color-bg);
 }
 .btn-primary:hover {
-  background: var(--color-accent-600);
+  background: var(--color-accent-700);
 }
 .btn-primary:active {
-  background: var(--color-accent-700);
+  background: var(--color-accent-800);
 }
 .btn-secondary {
   border-color: var(--color-divider);
@@ -329,7 +341,7 @@ img {
   display: grid;
   place-items: center;
   padding: var(--space-4);
-  background: color-mix(in srgb, var(--color-neutral-900) 50%, transparent);
+  background: rgba(4, 8, 9, 0.66);
 }
 .dialog {
   width: min(440px, 100%);
@@ -383,6 +395,15 @@ img {
     opacity: 1;
     transform: none;
   }
+}
+@keyframes confirmEdge {
+  0% { box-shadow: inset 0 0 0 1px var(--color-accent), 0 0 0 0 color-mix(in srgb, var(--color-accent) 30%, transparent); }
+  100% { box-shadow: inset 0 0 0 1px transparent, 0 0 0 10px transparent; }
+}
+@keyframes numPulse {
+  0% { transform: scale(1); }
+  52% { transform: scale(1.035); }
+  100% { transform: scale(1); }
 }
 @keyframes popIn {
   from {

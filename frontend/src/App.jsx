@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { MotionConfig } from "framer-motion";
 import { addMeal, deleteMeal, getMealsByDate, searchMeals, updateMeal } from "./api.js";
 import { todayISO } from "./dates.js";
 import Sidebar from "./components/Sidebar.jsx";
@@ -112,6 +113,7 @@ export default function App() {
   }, []);
 
   return (
+    <MotionConfig reducedMotion="user">
     <div
       style={{
         display: "flex",
@@ -181,5 +183,6 @@ export default function App() {
         />
       )}
     </div>
+    </MotionConfig>
   );
 }

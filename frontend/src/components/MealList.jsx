@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import FoodItem from "./FoodItem.jsx";
 import { SEG_COLORS } from "./CalorieRing.jsx";
 
@@ -30,7 +31,8 @@ export default function MealList({
         </h4>
       </div>
 
-      {meals.map((meal, index) => (
+      <AnimatePresence initial={false}>
+        {meals.map((meal, index) => (
         <FoodItem
           key={meal.id}
           meal={meal}
@@ -54,8 +56,9 @@ export default function MealList({
             setExpandedId(null);
             onDuplicate(meal);
           }}
-        />
-      ))}
+          />
+        ))}
+      </AnimatePresence>
 
       {meals.length === 0 && (
         <div

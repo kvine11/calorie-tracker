@@ -9,6 +9,10 @@ export default function MealForm({ onAdd, onSearch }) {
   const [calories, setCalories] = useState("");
   const [macros, setMacros] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  // Confirmation for a submit. The card's edge lights and fades — deliberately
+  // not a scale or a bounce, because the ring is the only thing in this app
+  // allowed to move like that (DESIGN.md → Motion).
+  const [justAdded, setJustAdded] = useState(0);
   const fieldRef = useRef(null);
 
   const { suggestions } = useFoodSearch(name, { onSearch });
@@ -34,6 +38,7 @@ export default function MealForm({ onAdd, onSearch }) {
     setCalories("");
     setMacros(null);
     setIsOpen(false);
+    setJustAdded((n) => n + 1);
   }
 
   // Picking a match fills both fields but leaves calories editable — the
@@ -46,7 +51,14 @@ export default function MealForm({ onAdd, onSearch }) {
   }
 
   return (
-    <div className="card elev-sm" style={{ gap: "var(--space-3)" }}>
+    <div
+      key={justAdded}
+      className="card elev-sm"
+      style={{
+        gap: "var(--space-3)",
+        animation: justAdded ? "confirmEdge 700ms ease-out" : undefined,
+      }}
+    >
       <div
         style={{
           display: "flex",
