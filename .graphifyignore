@@ -1,0 +1,8 @@
+# graphify scan scope — gitignore syntax.
+# .gitignore is honoured too, so target/, node_modules/ and build/ are already out.
+# This file covers things that ARE tracked but aren't this project.
+
+# Vendored third-party Claude skills (banner-design, brand, design-system,
+# slides, ui-styling, ui-ux-pro-max). ~95 files of someone else's docs that
+# otherwise dominate the graph and drown out the actual app.
+.claude/
