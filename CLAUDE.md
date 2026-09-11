@@ -21,7 +21,7 @@ A calorie tracker — the user's summer-long full-stack learning project (see th
 - **v8 (later, was v3):** Deploy — backend to Render/Railway, frontend to Vercel, hosted Postgres. Deliberately pushed later so deploy ships a fleshed-out app, not a bare CRUD demo.
 - **Further down the road (uncommitted):** users/auth — not committed to yet, revisit whenever. Living project — keeps growing after deploy too.
 
-**Do not add layers ahead of the roadmap** (no auth, no deploy config, and within v3–v7 specifically: don't jump ahead to a later version's concept before the current one is done) — pre-building defeats the learning structure. The user is a learner; prefer explaining the why behind code over dumping finished abstractions. Starting with v2, the user writes the actual feature code themselves (entity annotations, repository/service logic, API integration code, etc.) — the assistant's job is environment setup (installing dependencies, API keys/config, verifying connections, html frontend markup) and review/explanation, not writing that code for them. This applies to v3–v7 too, including the nutrition API and Claude vision work — no vibecoding, the user wants to do the heavy lifting. (Exception, established 2026-08-07: purely visual/animation polish — not architecture or feature logic — can be delegated and implemented directly when the user asks for it explicitly, as with the frontend redesign; see "Frontend design" below.)
+**Do not add layers ahead of the roadmap** (no auth, no deploy config, and within v3–v7 specifically: don't jump ahead to a later version's concept before the current one is done) — pre-building defeats the learning structure. The user is a learner; prefer explaining the why behind code over dumping finished abstractions. Starting with v2, the user writes the actual feature code themselves (entity annotations, repository/service logic, API integration code, etc.) — the assistant's job is environment setup (installing dependencies, API keys/config, verifying connections, html frontend markup, react components) and review/explanation, not writing that code for them. This applies to v3–v7 too, including the nutrition API and Claude vision work — no vibecoding, the user wants to do the heavy lifting. (Exception, established 2026-08-07: purely visual/animation polish — not architecture or feature logic — can be delegated and implemented directly when the user asks for it explicitly, as with the frontend redesign; see "Frontend design" below.)
 
 ## Current state
 
@@ -29,7 +29,7 @@ A calorie tracker — the user's summer-long full-stack learning project (see th
 
 **v2 (Postgres/JPA) — core done, environment set up:**
 
-- Postgres 18 installed natively on Windows (not Docker — deliberate, to keep focus on JPA/relational concepts). Runs as Windows service `postgresql-x64-18`. Dedicated role `caltracker_app` and database `caltracker` (not the `postgres` superuser).
+- Postgres installed natively (not Docker — deliberate, to keep focus on JPA/relational concepts). **The project now runs on macOS with Homebrew `postgresql@16`**, managed by launchd via `brew services` — see Commands and the `brew services` gotcha below. (Originally set up as Postgres 18 on Windows under the service `postgresql-x64-18`; that's history, not the current machine.) Dedicated role `caltracker_app` and database `caltracker`, not a superuser.
 - `pom.xml` has `spring-boot-starter-data-jpa` and `org.postgresql:postgresql` (runtime scope) added.
 - `application.properties` has the datasource block (`jdbc:postgresql://localhost:5432/caltracker`, `caltracker_app` credentials) plus `spring.jpa.hibernate.ddl-auto=update` (Hibernate creates/updates tables from `@Entity`, never drops data) and `spring.jpa.show-sql=true` (prints generated SQL — intentional, for learning).
 - `model/MealEntry.java` — `@Entity` + `@Table(name = "meal_entries")`, `@Id` + `@GeneratedValue(strategy = GenerationType.IDENTITY)` on `id` (kept as primitive `long`, not `Long`).
@@ -86,7 +86,9 @@ Worth understanding end to end, since none of this is written by hand — it's w
 
 ### Known gotchas
 
-- **Stale dev servers break CORS silently.** If `npm run dev` reports "Port 5173 is in use, trying another one," a leftover Vite process is squatting on 5173. Fix: find and kill the stale process (`netstat -ano | findstr :5173`, then stop that PID) before starting a fresh one. `@CrossOrigin` is now set to `originPatterns = "http://localhost:*"` specifically so a stray port doesn't silently break the frontend's fetch calls again.
+- **`Unable to determine Dialect without JDBC metadata` means Postgres is not running — it is not a config problem.** Hibernate opens a connection at startup to ask the server what it is; no server → no metadata → no dialect. The message points at JPA config and sends you hunting in `application.properties`, but the fix is almost always `brew services start postgresql@16`. **Check `brew services list` (`started` vs `none`) before touching any config.** `pg_isready -h localhost -p 5432` and `lsof -nP -iTCP:5432 -sTCP:LISTEN` confirm it in one line.
+- **`brew services stop postgresql@16` does two things, and the second one is easy to miss.** It stops the server *and* deregisters the launchd agent, so Postgres no longer auto-starts on login — a reboot does not bring it back, which makes it look like a mysterious deep setting rather than a service you stopped. `brew services start postgresql@16` restores both (the plist has `RunAtLoad` + `KeepAlive`). Diagnosed 2026-09-10: the server log showed a clean `received smart shutdown request` (not a crash) and `launchctl list | grep postgres` was empty. A clean shutdown in the log means your data is fine.
+- **Stale dev servers break CORS silently.** If `npm run dev` reports "Port 5173 is in use, trying another one," a leftover Vite process is squatting on 5173. Fix: find and kill the stale process (`lsof -nP -iTCP:5173 -sTCP:LISTEN`, then `kill <PID>`) before starting a fresh one. `@CrossOrigin` is now set to `originPatterns = "http://localhost:*"` specifically so a stray port doesn't silently break the frontend's fetch calls again.
 - **Never manually assign `id` before `save()`.** See the AtomicLong bug writeup above — let `@GeneratedValue` + Postgres handle it.
 - **JS `Date` string parsing is timezone-dependent, and it bit us twice building v3.** `new Date("2026-08-07")` (a date-only string) parses as **UTC midnight**, not local midnight — in any negative-UTC-offset timezone (most of the US), reading local getters (`.getDate()`, etc.) off the result can silently show the *previous* day. The fix used throughout the frontend: split the `"yyyy-MM-dd"` string into numeric year/month/day and use the multi-argument `new Date(year, monthIndex, day)` constructor (always local, no ambiguity) — never hand a date-only string straight to `new Date(...)`. This will come up again in v4's date-range picker.
 - **Never mutate a `Date` object you're about to loop `setDate()` over.** `DateSelection.jsx`'s week-generation logic originally called `.setDate()` repeatedly on the *same* mutating `Date` object across a 7-iteration loop; `setDate()` resolves relative to the object's *current* month at call time, so once one iteration rolled into a new month, every later iteration silently computed against the wrong month — a bug that only shows up for weeks spanning a month boundary. Fix: clone fresh from the untouched anchor date on every iteration. A related version of the same mistake: never mutate React state directly (e.g. calling `.setDate()` on a value straight out of `useState`) — always clone first, then call the setter.
@@ -193,15 +195,17 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
 
 ## Commands
 
-Backend — Maven wrapper, Windows (PowerShell), run from the repo root:
+Backend — Maven wrapper, macOS (zsh), run from the repo root:
 
 ```
-.\mvnw.cmd spring-boot:run      # run the app (localhost:8080)
-.\mvnw.cmd test                 # run all tests
-.\mvnw.cmd test -Dtest=CalTrackerApplicationTests            # run a single test class
-.\mvnw.cmd test -Dtest=SomeTests#someMethod                  # run a single test method
-.\mvnw.cmd clean package        # build the jar
+./mvnw spring-boot:run          # run the app (localhost:8080)
+./mvnw test                     # run all tests
+./mvnw test -Dtest=CalTrackerApplicationTests                # run a single test class
+./mvnw test -Dtest=SomeTests#someMethod                      # run a single test method
+./mvnw clean package            # build the jar
 ```
+
+Requires `FATSECRET_CLIENT_ID` / `FATSECRET_CLIENT_SECRET` exported in the shell — `application.properties` references them as `${...}` placeholders and startup fails without them.
 
 Frontend — from `frontend/`:
 
@@ -210,14 +214,24 @@ npm install                     # first-time setup / after pulling new deps
 npm run dev                     # run the app (localhost:5173)
 ```
 
-Database — Postgres 18, native Windows service `postgresql-x64-18` (not Docker):
+Database — Postgres 16 via Homebrew (`postgresql@16`), run by launchd, not Docker:
+
+```
+brew services list                                   # is it running? `started` vs `none` — check this FIRST when the backend won't boot
+brew services start postgresql@16                    # start now AND re-register auto-start on login
+brew services stop postgresql@16                      # stops it AND deregisters auto-start (see gotcha below)
+pg_isready -h localhost -p 5432                      # one-line liveness check
+tail -f /opt/homebrew/var/log/postgresql@16.log      # server log
+```
 
 ```
 psql -U caltracker_app -h localhost -d caltracker    # connect as the app role (password in application.properties)
-psql -U postgres -h localhost                          # connect as superuser (for admin tasks, e.g. creating roles/dbs)
+psql -d postgres                                     # connect as superuser for admin tasks (creating roles/dbs)
 ```
 
-Java 26, Spring Boot 4.1.0. Run backend + frontend + Postgres (as a Windows service, starts automatically) for the app to work end-to-end. `frontend/` is a plain sibling folder to `pom.xml` inside this same repo — not wired into the Maven build (no `frontend-maven-plugin`), matching the roadmap's v3 plan to deploy backend and frontend separately (Render/Railway + Vercel) rather than bundle into one jar. Revisit this structure if that deploy plan changes.
+**There is no `postgres` superuser role on this machine.** Homebrew initialises the cluster with a superuser named after the macOS user (`raink`), so `psql -U postgres` fails with `role "postgres" does not exist`. Omit `-U` and let it default to your own account. Data dir: `/opt/homebrew/var/postgresql@16`.
+
+Java 26 (Homebrew OpenJDK; `openjdk@21` is also installed — see the `JAVA_HOME` note under v2), Spring Boot 4.1.0. Run backend + frontend + Postgres (started by launchd on login) for the app to work end-to-end. `frontend/` is a plain sibling folder to `pom.xml` inside this same repo — not wired into the Maven build (no `frontend-maven-plugin`), matching the roadmap's v3 plan to deploy backend and frontend separately (Render/Railway + Vercel) rather than bundle into one jar. Revisit this structure if that deploy plan changes.
 
 ## Design System
 
