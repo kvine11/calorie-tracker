@@ -1,132 +1,111 @@
 import { useEffect, useState } from "react";
-import { getMealsByDate } from "../api.js";
+import { motion } from "framer-motion";
+import { getMealsInRange } from "../api.js";
 import { parseISO, shiftISO, todayISO } from "../dates.js";
+import { EASE_EXPO } from "../motion.js";
 
 const DAYS_SHOWN = 7;
 
-// The backend only answers one day at a time (GET /api/meals/date/{date}), so a
-// week is seven of those in parallel. A real range query lands with the charts
-// version — this view is deliberately built on what already exists.
-export default function HistoryView({ entryDate, onOpenDay }) {
-  const [days, setDays] = useState([]);
+function dayLabel(date, today) {
+  if (date === today) return "Today";
+  if (date === shiftISO(today, -1)) return "Yesterday";
+  return parseISO(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function emptyWeek(today) {
+  return Array.from({ length: DAYS_SHOWN }, (_, i) => ({ date: shiftISO(today, -i), total: 0, count: 0 }));
+}
+
+// One range request (GET /api/meals?from=&to=) grouped by day on the client.
+export default function HistoryView({ entryDate, revision, onOpenDay }) {
   const today = todayISO();
+  const from = shiftISO(today, -(DAYS_SHOWN - 1));
+  const [days, setDays] = useState(null);
+  const [error, setError] = useState(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const dates = Array.from({ length: DAYS_SHOWN }, (_, i) => shiftISO(today, -i));
     let cancelled = false;
 
-    Promise.all(dates.map((date) => getMealsByDate(date).catch(() => [])))
-      .then((results) => {
+    getMealsInRange(from, today)
+      .then((meals) => {
         if (cancelled) return;
-        setDays(
-          dates.map((date, index) => ({
-            date,
-            meals: results[index],
-            total: results[index].reduce((sum, meal) => sum + meal.calories, 0),
-          })),
-        );
+        const byDate = new Map();
+        for (const meal of meals) {
+          const day = byDate.get(meal.date) ?? { total: 0, count: 0 };
+          day.total += meal.calories;
+          day.count += 1;
+          byDate.set(meal.date, day);
+        }
+        setDays(emptyWeek(today).map((day) => ({ ...day, ...byDate.get(day.date) })));
+        setError(null);
       })
-      .catch(console.error);
+      .catch((err) => {
+        if (!cancelled) setError(err.message);
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [today]);
+  }, [from, today, revision, attempt]);
 
-  const maxTotal = Math.max(1, ...days.map((day) => day.total));
+  // Until the data lands, the rows render as empty tracks in their final places,
+  // so the bars grow in where they'll stay rather than the list popping in.
+  const rows = days ?? emptyWeek(today);
+  const logged = rows.filter((day) => day.count > 0);
+  const average = logged.length ? Math.round(logged.reduce((sum, day) => sum + day.total, 0) / logged.length) : null;
+  const maxTotal = Math.max(1, ...rows.map((day) => day.total));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <header>
-        <div
-          style={{
-            fontSize: 11,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "var(--color-accent)",
-          }}
-        >
-          History
-        </div>
-        <h1 style={{ margin: "6px 0 0", fontSize: 38 }}>Past days</h1>
+    <div className="history">
+      <header className="history-header">
+        <h1 className="history-title">Last 7 days</h1>
+        {average != null && (
+          <p className="history-stat">
+            <strong>{average.toLocaleString("en-US")}</strong> cal average across {logged.length} logged{" "}
+            {logged.length === 1 ? "day" : "days"}
+          </p>
+        )}
       </header>
 
-      <div className="card elev-sm" style={{ padding: "var(--space-4) var(--space-6)", gap: "var(--space-3)" }}>
-        {days.map((day) => (
+      {error && (
+        <div className="banner" role="alert">
+          <span>{error}</span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAttempt((n) => n + 1)}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className="card history-list">
+        {rows.map((day, index) => (
           <button
             key={day.date}
             type="button"
-            className="row-hover"
+            className="history-row"
+            data-selected={day.date === entryDate}
             onClick={() => onOpenDay(day.date)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "var(--space-4)",
-              width: "100%",
-              border: 0,
-              background: "transparent",
-              cursor: "pointer",
-              padding: "10px 8px",
-              borderRadius: "var(--radius-md)",
-              textAlign: "left",
-              fontFamily: "var(--font-body)",
-            }}
           >
-            <span style={{ width: 132, flex: "none", fontSize: 14, fontWeight: 600 }}>
-              {day.date === today
-                ? "Today"
-                : parseISO(day.date).toLocaleDateString("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                  })}
-            </span>
-            <span
-              style={{
-                flex: 1,
-                height: 12,
-                borderRadius: 999,
-                background: "var(--color-neutral-300)",
-                overflow: "hidden",
-                position: "relative",
-              }}
-            >
-              <span
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: `${Math.round((day.total / maxTotal) * 100)}%`,
-                  borderRadius: 999,
-                  background:
-                    day.date === entryDate ? "var(--color-accent)" : "var(--color-accent-2-500)",
-                  transition: "width 500ms cubic-bezier(0.16, 1, 0.3, 1)",
-                }}
+            <span className="history-day">{dayLabel(day.date, today)}</span>
+            <span className="history-track">
+              <motion.span
+                className="history-fill"
+                initial={{ width: 0 }}
+                animate={{ width: `${(day.total / maxTotal) * 100}%` }}
+                transition={{ duration: 0.5, ease: EASE_EXPO, delay: days ? index * 0.03 : 0 }}
               />
             </span>
-            <span
-              style={{
-                width: 96,
-                flex: "none",
-                textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-                fontSize: 14,
-              }}
-            >
-              {day.total} cal
+            <span className="history-total">
+              {day.count ? (
+                <>
+                  {day.total.toLocaleString("en-US")}
+                  <small>cal</small>
+                </>
+              ) : (
+                "—"
+              )}
             </span>
-            <span
-              style={{
-                width: 72,
-                flex: "none",
-                textAlign: "right",
-                fontSize: 13,
-                color: "color-mix(in srgb, var(--color-text) 50%, transparent)",
-              }}
-            >
-              {day.meals.length === 1 ? "1 meal" : `${day.meals.length} meals`}
-            </span>
+            <span className="history-count">{day.count === 1 ? "1 meal" : day.count > 1 ? `${day.count} meals` : ""}</span>
           </button>
         ))}
       </div>

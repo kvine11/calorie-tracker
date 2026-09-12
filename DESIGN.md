@@ -67,8 +67,9 @@ remember.
 - **Data/Tables:** Same family with `font-variant-numeric: tabular-nums`. Every
   number in the app — calories, grams, percentages — is tabular. Non-negotiable.
 - **Loading:** `https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400..700`
-- **Scale:** hero 52px · h1 38px · h2 30px · h3 22px · h4 18px · body 15px ·
-  small 13px · micro 11px uppercase `0.16em` tracking.
+- **Scale:** ring numeral 42px · page title 30px · body 15px · rows 14px ·
+  small 13px · micro 11px uppercase `0.16em` tracking. (Tightened from hero 52 /
+  h1 38 in the 2026-09-12 compact pass.)
 
 ## Color
 
@@ -102,14 +103,19 @@ remember.
 
 ## Spacing
 
-- **Base unit:** 4px, expressed through the existing `--space-*` tokens.
-- **Density:** Comfortable. Data rows are compact; the ring card is generous.
+- **Base unit:** 4px. Values in `index.css` are literal multiples of 4.
+- **Density:** Compact. Rows are 40–44px; the ring card is the one generous surface.
+- **Only what works:** nothing ships as a disabled "soon" placeholder. A feature
+  appears in the interface when its backend exists.
 
 ## Layout
 
-- **Approach:** Grid-disciplined. 238px sticky sidebar, two-column Today view
-  collapsing to one at ≤1040px.
-- **Border radius:** sm 8px · md 16px · lg 28px · full 9999px.
+- **Approach:** Grid-disciplined. A 56px sticky top bar (mark, Today/History
+  tabs, Quick add ⌘K) over a 1120px content column. Today is two columns — a
+  300px ring card, then the log form and the meal ledger — collapsing to one at
+  ≤960px.
+- **Border radius:** sm 8px · md 16px (cards, palette) · full 9999px (inputs,
+  buttons, pills).
 - **Alignment:** everything is left-aligned to the grid **except the ring's centre
   number**, which is the only centred element in the app. That is what makes it
   read as the hero rather than as one more card.
@@ -131,6 +137,13 @@ remember.
   340ms rather than snapping.
 - **Ring draw-in** (date change / mount): dash sweep 620ms
   `cubic-bezier(.16,1,.3,1)`, arcs staggered 45ms chronologically.
+- **Switching day:** the ledger crossfades 140ms and the ring redraws. Rows never
+  mass-exit and mass-enter; per-row enter/exit is reserved for add and delete.
+- **Shared highlights:** the active tab and the selected day are one element each
+  that slides between positions (`layoutId`, spring 380/34).
+- **View switch:** Today ↔ History fades with a 6px rise, 180ms.
+- **Overlays:** the palette backdrop fades 120ms and its panel rises 8px; the
+  toast rises 12px and a hairline drains over its lifetime. No overlay scales.
 - **Must NOT animate:** typeahead result rows (fade the container 90ms, stagger
   nothing — staggered search results feel slow, and fast logging is the point of
   the app); hairlines; sidebar hover beyond a 90ms background change; macro
@@ -144,6 +157,7 @@ Every colour in this codebase is a CSS custom property in `index.css`'s `:root` 
 there are no hardcoded hex values in any component. A palette change is that one
 block plus the font import. The component-level exceptions are `CalorieRing.jsx`
 (stroke width, caps, the `SEG_COLORS` ramp) and `macros.js` (macro trio).
+Easing curves and the layout spring live in `frontend/src/motion.js`.
 
 ## Decisions Log
 
@@ -154,4 +168,6 @@ block plus the font import. The component-level exceptions are `CalorieRing.jsx`
 | 2026-09-07 | Direction Oxide over Safelight / Graphite & Citron | User picked from three live mockups. Safelight (warm dark + ember + serif numeral) was the recommendation, backed by two independent design passes converging; Oxide was chosen as the calmer answer. |
 | 2026-09-07 | One-hue luminance ramp for arcs; butt caps; 13px stroke | From the independent second pass. Six categorical hues make a clown pie; round caps turn small meals into floating pills; a thin ring reads as a bezel, a thick one as a fitness band. |
 | 2026-09-07 | Macro trio off the arc ramp | So the energy bar sitting inches below the ring never reads as three more meals. |
+| 2026-09-12 | Top bar replaces the 238px sidebar | User call. Only two destinations were real; a sidebar for two items spent a quarter of the width on navigation, and a top bar is already most of the way to the planned mobile tab bar. |
+| 2026-09-12 | Removed Search, Settings, every "soon" item, the ring's meal legend | User asked for only what's necessary and working. Search duplicated the log form and ⌘K; Settings' toggles never persisted; the legend repeated the ledger beside it. |
 | 2026-09-07 | Ring is always 100% full | There is no goal entity in the schema. The ring answers "where did today's calories come from", not "how much have I failed by" — which also frees the accent from ever meaning "bad". |

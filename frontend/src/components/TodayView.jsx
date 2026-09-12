@@ -3,76 +3,65 @@ import CalorieRing from "./CalorieRing.jsx";
 import DateSelection from "./DateSelection.jsx";
 import MealForm from "./MealForm.jsx";
 import MealList from "./MealList.jsx";
-import { longDate } from "../dates.js";
+import { longDate, todayISO } from "../dates.js";
 
 export default function TodayView({
   entryDate,
-  onDateChange,
+  mealsDate,
   meals,
-  weekStartsOn,
+  loadError,
+  onRetry,
+  onDateChange,
   onAdd,
   onUpdate,
   onDelete,
   onDuplicate,
   onSearch,
 }) {
-  // Hovering a meal — in the list or the legend — lifts its arc in the ring.
+  // Hovering a meal row lifts its arc in the ring.
   const [hoverId, setHoverId] = useState(null);
   const total = meals.reduce((sum, meal) => sum + meal.calories, 0);
+  const isToday = entryDate === todayISO();
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "var(--space-6)",
-          flexWrap: "wrap",
-          paddingBottom: "var(--space-4)",
-          borderBottom: "1px solid var(--color-divider)",
-        }}
-      >
-        {/* The heading is the selected day, so browsing back never leaves a
-            "today" label sitting above another day's number. */}
-        <h1 style={{ margin: 0, fontSize: 38 }}>{longDate(entryDate)}</h1>
-        <DateSelection
-          entryDate={entryDate}
-          onDateChange={onDateChange}
-          weekStartsOn={weekStartsOn}
-          showWeekNav
-        />
+    <div className="today">
+      <header className="today-header">
+        <div className="today-heading">
+          {/* The heading is the selected day, so browsing back never leaves a
+              "today" label sitting above another day's number. */}
+          <h1 className="today-title">{longDate(entryDate)}</h1>
+          {!isToday && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => onDateChange(todayISO())}>
+              Back to today
+            </button>
+          )}
+        </div>
+        <DateSelection entryDate={entryDate} onDateChange={onDateChange} showWeekNav />
       </header>
 
-      <section
-        data-grid
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(280px, 340px) minmax(0, 1fr)",
-          gap: "var(--space-6)",
-          alignItems: "start",
-        }}
-      >
-        {/* Remounts per day so the ring redraws itself on each date change. */}
-        <CalorieRing
-          key={entryDate}
-          meals={meals}
-          total={total}
-          hoverId={hoverId}
-          onHover={setHoverId}
-        />
+      {loadError && (
+        <div className="banner" role="alert">
+          <span>{loadError}</span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
+            Retry
+          </button>
+        </div>
+      )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <section className="today-grid">
+        {/* Remounts per loaded day, so the ring draws itself in for each one. */}
+        <CalorieRing key={mealsDate ?? "loading"} meals={meals} total={total} hoverId={hoverId} />
+
+        <div className="today-log">
           <MealForm onAdd={onAdd} onSearch={onSearch} />
           <MealList
+            listKey={mealsDate}
             meals={meals}
-            weekStartsOn={weekStartsOn}
             hoverId={hoverId}
             onHover={setHoverId}
             onUpdate={onUpdate}
             onDelete={onDelete}
             onDuplicate={onDuplicate}
-            onSearch={onSearch}
           />
         </div>
       </section>

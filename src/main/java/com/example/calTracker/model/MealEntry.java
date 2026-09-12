@@ -2,8 +2,6 @@ package com.example.calTracker.model;
 
 import java.time.LocalDate;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -18,24 +16,25 @@ public class MealEntry {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
+
+    @Column(nullable = false)
     private String name;
+
     private int calories;
     private Double carbs;
     private Double protein;
     private Double fats;
 
-    @Column(name = "date")
+    @Column(name = "date", nullable = false)
     private LocalDate date;
 
 
     public MealEntry() {
     }
 
-    // Jackson would otherwise auto-detect this as the JSON-binding constructor,
-    // and fail on POST bodies that omit "id" (which is intentional — the server
-    // assigns it). Disabling that keeps this constructor for internal Java use
-    // (e.g. seeding sample data) while JSON deserialization uses MealEntry() + setters.
-    @JsonCreator(mode = JsonCreator.Mode.DISABLED)
+    // For Java code such as tests. JSON never binds to this entity any more:
+    // requests arrive as MealEntryCreateRequest / MealEntryUpdateRequest, and
+    // the entity is only ever written out as a response.
     public MealEntry(long id, String name, int calories, Double carbs, Double protein, Double fats, LocalDate date) {
         this.id = id;
         this.name = name;
