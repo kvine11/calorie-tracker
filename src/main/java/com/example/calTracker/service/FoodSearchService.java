@@ -30,6 +30,11 @@ public class FoodSearchService {
     private static final Pattern PROTEIN = macroPattern("Protein");
     private static final Pattern FAT = macroPattern("Fat");
 
+    // The portion the rest of the numbers describe. Anchored on " - Calories:"
+    // rather than the first dash, so a serving is read correctly even when the
+    // text around it varies. Reluctant group: stop at the first such marker.
+    private static final Pattern SERVING = Pattern.compile("^Per\\s+(.+?)\\s+-\\s+Calories:");
+
     // Refresh a little before FatSecret says the token expires, so a request
     // that starts just before the deadline doesn't arrive just after it.
     private static final Duration TOKEN_EXPIRY_MARGIN = Duration.ofSeconds(60);
@@ -125,10 +130,18 @@ public class FoodSearchService {
 
         return Optional.of(new FoodSearch(
                 entry.foodName(),
+                parseServing(description),
                 Integer.parseInt(calories.group(1)),
                 parseMacro(description, CARBS),
                 parseMacro(description, PROTEIN),
                 parseMacro(description, FAT)));
+    }
+
+    // Null rather than a guess when the description doesn't open with a portion:
+    // the dropdown then says nothing about serving size instead of a wrong thing.
+    private static String parseServing(String description) {
+        Matcher matcher = SERVING.matcher(description);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     // synchronized: two searches arriving together with an expired token would

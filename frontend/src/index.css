@@ -678,9 +678,21 @@ small {
 
 .suggestion-cal {
   flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-2);
+}
+
+/* The portion the calorie count describes. FatSecret's numbers are always per
+   serving, so without this a row reads as though 165 kcal were the whole item. */
+.suggestion-serving {
+  font-size: 11px;
+  color: var(--color-text-3);
+  white-space: nowrap;
 }
 
 /* meal ledger */

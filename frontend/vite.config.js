@@ -1,4 +1,6 @@
-import { defineConfig } from "vite";
+// defineConfig from vitest/config is a superset of vite's, so one file
+// configures both the dev server and the test runner.
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
@@ -27,5 +29,13 @@ export default defineConfig({
         },
       },
     },
+  },
+
+  test: {
+    // Component and hook tests need a DOM; the pure helpers don't care.
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/test/setup.js",
+    css: false,
   },
 });

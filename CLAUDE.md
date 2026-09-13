@@ -124,15 +124,60 @@ A deploy-ready pass — nothing deployed, no hosting provider chosen. Backend Ja
 - **Removed from the edit form: food search.** Picking a match changed name + calories but kept the old meal's macros (the update rescales what's stored), so a meal renamed to "Apple" carried the steak's protein. Editing is for portion, typo, or day.
 - **Ops:** `/actuator/health` (only endpoint exposed), CORS via `config/WebConfig` + `app.cors.allowed-origins`.
 - **Tests (29):** `MealEntryControllerTest` + `FoodSearchControllerTest` (`@WebMvcTest`), `MealEntryServiceTest` (Mockito), `MealEntryRepositoryTest` (`@DataJpaTest` against real Postgres `caltracker_test` — proves migrations, constraints, ordering, range), `FoodSearchServiceTest` (parsing), `CalTrackerApplicationTests` (full context under `validate`). Test profile: `src/test/resources/application-test.properties`.
-- **CI:** `.github/workflows/ci.yml` — backend job with a `postgres:16` service running `./mvnw -B verify`, frontend job running `npm ci && npm run build`.
+- **CI:** `.github/workflows/ci.yml` — backend job with a `postgres:16` service running `./mvnw -B verify`, frontend job running `npm ci && npm test && npm run build`. Triggers on pushes to `main` and on every PR.
 - **Boot 4 module names worth knowing** (all verified against the 4.1.0 jars): `spring-boot-starter-flyway` (plain `flyway-core` won't auto-configure) + `flyway-database-postgresql`; `spring-boot-starter-data-jpa-test`; `org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest`; `org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest`; `org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase`.
+
+## Frontend tests (2026-09-13)
+
+Vitest + Testing Library, 54 tests in four files beside the modules they cover
+(`src/*.test.js`). Run with `npm test` from `frontend/`; `npm run test:watch` for
+a watcher. Config lives in `vite.config.js` under a `test` key — `defineConfig`
+is imported from `vitest/config`, a superset of vite's, so one file configures
+the dev server and the runner. `src/test/setup.js` adds the DOM matchers and
+cleans up between tests.
+
+**Pinned to vitest 2, deliberately.** Vitest 3+ requires vite 6, and this project
+is on vite 5. Upgrading the build tool is its own change, not a side effect of
+adding tests.
+
+What's covered, chosen as the places bugs have actually happened:
+
+- **`dates.test.js`** — the two documented traps: `new Date("yyyy-MM-dd")` parsing
+  as UTC midnight, and the mutating-`Date` loop that broke `weekOf` across a month
+  boundary. That second one only fails for a week spanning two months, so the test
+  uses one.
+- **`macros.test.js`** — `null` (unknown) vs `0` (a real zero) through `hasMacros`
+  and `macroTotals`, and `scaleMacro` rounding identically to
+  `MealEntryService.scale`. If those two drift, the same meal shows different
+  grams depending on which side scaled it.
+- **`api.test.js`** — the `request()` helper against a stubbed `fetch`: no `id` in
+  a POST body, no macros in a PUT body, query encoding, `204` → `null`, and the
+  three failure shapes (problem+json `detail`, non-JSON body, unreachable server).
+- **`hooks.test.jsx`** — `useFoodSearch` with fake timers: the 2-character floor,
+  one call per typed word rather than per keystroke, `enabled: false`, the
+  `limit` slice, the stale-response guard, and `unavailable` as a state distinct
+  from "no matches".
+
+**Two gotchas worth knowing if you extend these:**
+
+- **`waitFor` polls on real timers.** With `vi.useFakeTimers()` installed it never
+  resolves and the test dies at the 5s timeout. These tests advance the clock
+  inside `act()` and then flush microtasks instead of using `waitFor`.
+- **`useDebounce` seeds its state with the value it is handed**, so mounting a
+  hook with text already in the query fires a search on the first render, before
+  any debounce. The test helper mounts empty and rerenders with the query, which
+  is what the real input does.
 
 ## Macro tracking (PR #8 "macrodisplay", done)
 
 Protein/carbs/fat are now first-class, end to end — this is the part of v6's original scope that actually landed:
 
 - **`MealEntry`** gained `Double carbs`, `Double protein`, `Double fats` alongside `int calories`. Boxed `Double`, not primitive `double`, **on purpose** — a manually-entered meal legitimately has *unknown* macros, and `null` says that where `0.0` would lie. `calories` stays a primitive `int` because a meal always has one.
-- **`FoodSearch`** carries the same four values from FatSecret through to the frontend.
+- **`FoodSearch`** carries the same four values from FatSecret through to the frontend, plus
+  `serving` — the portion they describe ("100g", "1 cup"), parsed from the same
+  `food_description` string and shown under the calorie count in both dropdowns. It is a
+  search-result field only: `meal_entries` has no serving column, so the portion informs the
+  pick and is not persisted.
 - **`macros.js`** owns the display math: `MACROS` (the canonical trio + colors), `hasMacros`, `macroTotals`, `energySplit` (grams → calories), `formatGrams`, `scaleMacro`.
 - **`MacroLine.jsx`** renders the stacked composition bar. Per DESIGN.md the macro trio sits deliberately *off* the ring's arc ramp.
 
