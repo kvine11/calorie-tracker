@@ -30,12 +30,15 @@ class FoodSearchControllerTest {
     @Test
     void returnsMatches() throws Exception {
         given(foodSearchService.searchFood("chicken"))
-                .willReturn(List.of(new FoodSearch("Chicken Breast", 165, 0.0, 31.02, 3.57)));
+                .willReturn(List.of(new FoodSearch("Chicken Breast", "100g", 165, 0.0, 31.02, 3.57)));
 
         mockMvc.perform(get("/api/meals/search").param("query", "chicken"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].foodName").value("Chicken Breast"))
-                .andExpect(jsonPath("$[0].calories").value(165));
+                .andExpect(jsonPath("$[0].calories").value(165))
+                // The portion has to survive serialisation, or the dropdown
+                // shows a calorie count with nothing to anchor it to.
+                .andExpect(jsonPath("$[0].serving").value("100g"));
     }
 
     @Test

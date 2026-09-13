@@ -150,7 +150,10 @@ export default function MealForm({ onAdd, onSearch }) {
                         <span className="suggestion-name">{food.foodName}</span>
                         <MacroLine food={food} />
                       </span>
-                      <span className="suggestion-cal">{food.calories} cal</span>
+                      <span className="suggestion-cal">
+                        <span>{food.calories} cal</span>
+                        {food.serving && <span className="suggestion-serving">per {food.serving}</span>}
+                      </span>
                     </button>
                   </li>
                 ))}
