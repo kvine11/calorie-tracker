@@ -1,181 +1,182 @@
 import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useClickOutside, useFoodSearch } from "../hooks.js";
-import { CameraIcon } from "./Icons.jsx";
 import MacroLine from "./MacroLine.jsx";
 import { scaleMacro } from "../macros.js";
 
 export default function MealForm({ onAdd, onSearch }) {
   const [name, setName] = useState("");
   const [calories, setCalories] = useState("");
-  const [macros, setMacros] = useState(null);
+  // The food picked from search, if any. Its macros are scaled to whatever the
+  // calorie field ends up at; nothing picked means macros are genuinely unknown.
+  const [picked, setPicked] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
-  // Confirmation for a submit. The card's edge lights and fades — deliberately
-  // not a scale or a bounce, because the ring is the only thing in this app
-  // allowed to move like that (DESIGN.md → Motion).
-  const [justAdded, setJustAdded] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [isSaving, setIsSaving] = useState(false);
+  // Lights the card's edge after a successful add — deliberately not a scale or
+  // a bounce, because the ring is the only thing allowed to move like that.
+  const [flash, setFlash] = useState(false);
+
   const fieldRef = useRef(null);
+  const nameRef = useRef(null);
+  const caloriesRef = useRef(null);
 
-  const { suggestions } = useFoodSearch(name, { onSearch });
-  useClickOutside(fieldRef, () => setIsOpen(false));
+  // No search once a match is picked: the name already is the match.
+  const { suggestions, unavailable } = useFoodSearch(name, { onSearch, enabled: !picked });
 
-  function handleSubmit(event) {
-    event.preventDefault();
-    if (!name.trim() || !calories) return;
-
-    // Macros aren't typed — they come from the food that was picked, scaled to
-    // whatever portion the calorie field ended up at. Nothing picked means the
-    // macros are genuinely unknown, which is null, not zero.
-    const ratio = macros && macros.calories ? Number(calories) / macros.calories : 1;
-
-    onAdd(
-      name.trim(),
-      Number(calories),
-      scaleMacro(macros?.protein, ratio),
-      scaleMacro(macros?.carbs, ratio),
-      scaleMacro(macros?.fats, ratio),
-    );
-    setName("");
-    setCalories("");
-    setMacros(null);
-    setIsOpen(false);
-    setJustAdded((n) => n + 1);
+  // New results, fresh keyboard position.
+  const [shownSuggestions, setShownSuggestions] = useState(suggestions);
+  if (suggestions !== shownSuggestions) {
+    setShownSuggestions(suggestions);
+    setActiveIndex(-1);
   }
 
-  // Picking a match fills both fields but leaves calories editable — the
-  // portion on the plate is rarely the portion the database assumed.
-  function handlePick(suggestion) {
-    setName(suggestion.foodName);
-    setCalories(suggestion.calories);
-    setMacros(suggestion);
+  useClickOutside(fieldRef, () => setIsOpen(false));
+
+  const showSuggestions = isOpen && suggestions.length > 0;
+  const canSubmit = name.trim() !== "" && calories !== "" && !isSaving;
+
+  // Picking fills both fields but leaves calories editable — the portion on the
+  // plate is rarely the portion the database assumed — so focus moves there.
+  function handlePick(food) {
+    setName(food.foodName);
+    setCalories(String(food.calories));
+    setPicked(food);
     setIsOpen(false);
+    caloriesRef.current?.focus();
+  }
+
+  function handleNameKeyDown(event) {
+    if (!showSuggestions) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((i) => (i + 1) % suggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((i) => (i <= 0 ? suggestions.length - 1 : i - 1));
+    } else if (event.key === "Enter" && activeIndex >= 0) {
+      event.preventDefault();
+      handlePick(suggestions[activeIndex]);
+    } else if (event.key === "Escape") {
+      setIsOpen(false);
+    }
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (!canSubmit) return;
+
+    const ratio = picked?.calories ? Number(calories) / picked.calories : 1;
+
+    setIsSaving(true);
+    const ok = await onAdd({
+      name: name.trim(),
+      calories: Number(calories),
+      protein: scaleMacro(picked?.protein, ratio),
+      carbs: scaleMacro(picked?.carbs, ratio),
+      fats: scaleMacro(picked?.fats, ratio),
+    });
+    setIsSaving(false);
+
+    // On failure the toast explains, and what was typed stays put.
+    if (!ok) return;
+    setName("");
+    setCalories("");
+    setPicked(null);
+    setIsOpen(false);
+    setFlash(true);
+    nameRef.current?.focus();
   }
 
   return (
     <div
-      key={justAdded}
-      className="card elev-sm"
-      style={{
-        gap: "var(--space-3)",
-        animation: justAdded ? "confirmEdge 700ms ease-out" : undefined,
-      }}
+      className="card log-card"
+      data-flash={flash}
+      onAnimationEnd={(event) => event.target === event.currentTarget && setFlash(false)}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          gap: "var(--space-3)",
-        }}
-      >
-        <div className="card-title">Log a meal</div>
-        <div style={{ fontSize: 12, color: "color-mix(in srgb, var(--color-text) 50%, transparent)" }}>
-          Start typing for matches
-        </div>
-      </div>
-
-      <form
-        onSubmit={handleSubmit}
-        style={{ display: "flex", gap: "var(--space-2)", alignItems: "flex-start", flexWrap: "wrap" }}
-      >
-        <div ref={fieldRef} style={{ position: "relative", flex: 1, minWidth: 200 }}>
+      <form className="log-row" onSubmit={handleSubmit}>
+        <div ref={fieldRef} className="log-name">
           <input
+            ref={nameRef}
             className="input"
             type="text"
             placeholder="What did you eat?"
             aria-label="Food name"
+            autoComplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={showSuggestions}
+            aria-controls="meal-suggestions"
+            aria-activedescendant={showSuggestions && activeIndex >= 0 ? `meal-suggestion-${activeIndex}` : undefined}
             value={name}
             onChange={(event) => {
               setName(event.target.value);
+              setPicked(null);
               setIsOpen(true);
-              setMacros(null);
             }}
             onFocus={() => setIsOpen(true)}
+            onKeyDown={handleNameKeyDown}
           />
 
-          {isOpen && suggestions.length > 0 && (
-            <ul
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: "calc(100% + 6px)",
-                zIndex: 40,
-                margin: 0,
-                padding: 6,
-                listStyle: "none",
-                background: "var(--color-neutral-100)",
-                border: "1px solid var(--color-divider)",
-                borderRadius: "var(--radius-md)",
-                boxShadow: "var(--shadow-md)",
-                animation: "popIn 140ms ease both",
-              }}
-            >
-              {suggestions.map((suggestion, index) => (
-                <li key={`${suggestion.foodName}-${index}`}>
-                  <button
-                    type="button"
-                    className="suggestion"
-                    onClick={() => handlePick(suggestion)}
-                    style={{
-                      display: "flex",
-                      width: "100%",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 16,
-                      padding: "7px 10px",
-                      border: 0,
-                      borderRadius: 999,
-                      background: "transparent",
-                      cursor: "pointer",
-                      fontFamily: "var(--font-body)",
-                      fontSize: 14,
-                      color: "var(--color-text)",
-                      textAlign: "left",
-                    }}
+          <AnimatePresence>
+            {showSuggestions && (
+              // The container fades; the rows don't stagger. Staggered search
+              // results feel slow, and fast logging is the point (DESIGN.md).
+              <motion.ul
+                id="meal-suggestions"
+                role="listbox"
+                className="suggestions"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.09 }}
+              >
+                {suggestions.map((food, index) => (
+                  <li
+                    key={`${food.foodName}-${index}`}
+                    id={`meal-suggestion-${index}`}
+                    role="option"
+                    aria-selected={index === activeIndex}
                   >
-                    <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                      <span>{suggestion.foodName}</span>
-                      <MacroLine food={suggestion} />
-                    </span>
-                    <span
-                      style={{
-                        flex: "none",
-                        fontVariantNumeric: "tabular-nums",
-                        color: "color-mix(in srgb, var(--color-text) 55%, transparent)",
-                      }}
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      className="suggestion"
+                      data-active={index === activeIndex}
+                      onMouseEnter={() => setActiveIndex(index)}
+                      onClick={() => handlePick(food)}
                     >
-                      {suggestion.calories} cal
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                      <span className="suggestion-text">
+                        <span className="suggestion-name">{food.foodName}</span>
+                        <MacroLine food={food} />
+                      </span>
+                      <span className="suggestion-cal">{food.calories} cal</span>
+                    </button>
+                  </li>
+                ))}
+              </motion.ul>
+            )}
+          </AnimatePresence>
         </div>
 
         <input
-          className="input"
+          ref={caloriesRef}
+          className="input log-cal"
           type="number"
           min="0"
+          inputMode="numeric"
           placeholder="cal"
           aria-label="Calories"
           value={calories}
           onChange={(event) => setCalories(event.target.value)}
-          style={{ width: 96, flex: "none", fontVariantNumeric: "tabular-nums" }}
         />
 
-        <button type="submit" className="btn btn-primary">
-          Add meal
-        </button>
-
-        <button type="button" className="btn btn-secondary" disabled style={{ gap: 8 }}>
-          <CameraIcon size={15} />
-          Scan
-          <span className="tag tag-neutral" style={{ fontSize: 10, padding: "1px 7px" }}>
-            soon
-          </span>
+        <button type="submit" className="btn btn-primary" disabled={!canSubmit}>
+          Add
         </button>
       </form>
+
+      {unavailable && <p className="log-hint">Food search is unavailable right now — enter the calories by hand.</p>}
     </div>
   );
 }

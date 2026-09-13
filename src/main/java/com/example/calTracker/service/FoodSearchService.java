@@ -1,16 +1,19 @@
 package com.example.calTracker.service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClient;
 
 import com.example.calTracker.model.FoodSearch;
@@ -19,6 +22,20 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Service
 public class FoodSearchService {
+
+    // Compiled once. Pattern.compile is comparatively expensive, and the old
+    // code ran it for every result of every search.
+    private static final Pattern CALORIES = Pattern.compile("Calories:\\s*(\\d+)kcal");
+    private static final Pattern CARBS = macroPattern("Carbs");
+    private static final Pattern PROTEIN = macroPattern("Protein");
+    private static final Pattern FAT = macroPattern("Fat");
+
+    // Refresh a little before FatSecret says the token expires, so a request
+    // that starts just before the deadline doesn't arrive just after it.
+    private static final Duration TOKEN_EXPIRY_MARGIN = Duration.ofSeconds(60);
+
+    // The frontend never shows more than about ten suggestions.
+    private static final int MAX_RESULTS = 10;
 
     private final RestClient restClient;
     private final String clientId;
@@ -49,16 +66,74 @@ public class FoodSearchService {
 
     }
 
-    @Autowired
+    // The injected builder already carries the connect/read timeouts from
+    // spring.http.clients.* in application.properties.
     public FoodSearchService(@Value("${fatsecret.client-id}") String clientId,
             @Value("${fatsecret.client-secret}") String clientSecret,
-            RestClient.Builder restClientBuild) {
+            RestClient.Builder restClientBuilder) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.restClient = restClientBuild.build();
+        this.restClient = restClientBuilder.build();
     }
 
-    private String getValidAccessToken() {
+    public List<FoodSearch> searchFood(String query) {
+        try {
+            String token = getValidAccessToken();
+
+            SearchResponse response = restClient.get()
+                    .uri("https://platform.fatsecret.com/rest/foods/search/v1?search_expression={query}&max_results={max}&format=json",
+                            query, MAX_RESULTS)
+                    .headers(headers -> headers.setBearerAuth(token))
+                    .retrieve()
+                    .body(SearchResponse.class);
+
+            // FatSecret leaves out the "food" key entirely when nothing matches.
+            // A miss is an empty list, never an error: "no matches, log it by
+            // hand" is a normal path through the app.
+            if (response == null || response.foods() == null || response.foods().food() == null) {
+                return List.of();
+            }
+
+            List<FoodSearch> results = new ArrayList<>();
+            for (FoodEntry entry : response.foods().food()) {
+                toFoodSearch(entry).ifPresent(results::add);
+            }
+            return results;
+        } catch (RestClientException ex) {
+            // Covers timeouts, connection failures, 4xx/5xx from FatSecret and
+            // unreadable bodies. Drop the token too: if it was revoked early,
+            // the next search should fetch a fresh one rather than fail again.
+            invalidateToken();
+            throw new FoodSearchUnavailableException("FatSecret request failed", ex);
+        }
+    }
+
+    // FatSecret puts nutrition in one human-readable string, e.g.
+    // "Per 100g - Calories: 165kcal | Fat: 3.57g | Carbs: 0.00g | Protein: 31.02g".
+    // Static and package-private so the parsing can be tested without HTTP.
+    // Empty when calories can't be read — a result without them can't be logged.
+    static Optional<FoodSearch> toFoodSearch(FoodEntry entry) {
+        String description = entry.foodDescription();
+        if (entry.foodName() == null || description == null) {
+            return Optional.empty();
+        }
+
+        Matcher calories = CALORIES.matcher(description);
+        if (!calories.find()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new FoodSearch(
+                entry.foodName(),
+                Integer.parseInt(calories.group(1)),
+                parseMacro(description, CARBS),
+                parseMacro(description, PROTEIN),
+                parseMacro(description, FAT)));
+    }
+
+    // synchronized: two searches arriving together with an expired token would
+    // otherwise both request a new one.
+    private synchronized String getValidAccessToken() {
         if (accessToken == null || Instant.now().isAfter(tokenExpirationTime)) {
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
             formData.add("grant_type", "client_credentials");
@@ -68,63 +143,35 @@ public class FoodSearchService {
                     .uri("https://oauth.fatsecret.com/connect/token")
                     .headers(headers -> {
                         headers.setBasicAuth(clientId, clientSecret);
-                        headers.setContentType(org.springframework.http.MediaType.APPLICATION_FORM_URLENCODED);
+                        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
                     })
                     .body(formData)
                     .retrieve()
                     .body(TokenResponse.class);
 
+            if (response == null || response.accessToken() == null) {
+                throw new FoodSearchUnavailableException("FatSecret returned no access token", null);
+            }
+
             this.accessToken = response.accessToken();
-            this.tokenExpirationTime = Instant.now().plusSeconds(response.expiresIn());
+            this.tokenExpirationTime = Instant.now()
+                    .plusSeconds(response.expiresIn())
+                    .minus(TOKEN_EXPIRY_MARGIN);
         }
         return accessToken;
     }
 
-    public List<FoodSearch> searchFood(String query) {
-        String token = getValidAccessToken();
-
-        SearchResponse response = restClient.get()
-                .uri("https://platform.fatsecret.com/rest/foods/search/v1?search_expression={query}&format=json", query)
-                .headers(headers -> headers.setBearerAuth(token))
-                .retrieve()
-                .body(SearchResponse.class);
-
-        List<FoodSearch> results = new ArrayList<>();
-
-        if (response.foods() == null || response.foods().food() == null) {
-            return results;
-        }
-        for (FoodEntry entry : response.foods().food()) {
-
-            Matcher matcher = Pattern.compile("Calories:\\s*(\\d+)kcal").matcher(entry.foodDescription());
-            if(!matcher.find()) {
-                continue; // Skip this entry if calories are not found
-            }
-
-            int calories = Integer.parseInt(matcher.group(1));
-
-
-
-
-            Double carbs = parseMacros(entry.foodDescription(), "Carbs");
-            Double protein = parseMacros(entry.foodDescription(), "Protein");
-            Double fats = parseMacros(entry.foodDescription(), "Fat");
-
-            results.add(new FoodSearch(entry.foodName(), calories, carbs, protein, fats));
-        }
-
-        return results;
+    private synchronized void invalidateToken() {
+        accessToken = null;
     }
 
-    private Double parseMacros(String foodDescription, String macro) {
-      
-            Matcher matcher = Pattern.compile(macro + ":\\s*(\\d+(?:\\.\\d+)?)g").matcher(foodDescription);
-            if (matcher.find()) {
-                return Double.parseDouble(matcher.group(1));
-            }
-            return null;
-        
+    private static Pattern macroPattern(String macro) {
+        return Pattern.compile(macro + ":\\s*(\\d+(?:\\.\\d+)?)g");
+    }
 
+    private static Double parseMacro(String description, Pattern pattern) {
+        Matcher matcher = pattern.matcher(description);
+        return matcher.find() ? Double.parseDouble(matcher.group(1)) : null;
     }
 
 }

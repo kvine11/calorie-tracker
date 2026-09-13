@@ -1,55 +1,41 @@
-import { iso, shiftISO, weekOf } from "../dates.js";
+import { motion } from "framer-motion";
+import { iso, shiftISO, todayISO, weekOf } from "../dates.js";
+import { LAYOUT_SPRING } from "../motion.js";
+import { ChevronLeftIcon, ChevronRightIcon } from "./Icons.jsx";
 
 const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
-// One week of day pills. Two instances exist at once when a meal is expanded:
-// the page-level strip that drives which day is loaded, and the one inside a
-// meal's detail view that moves that single meal to another day.
+// One week of day pills. Two can be on screen at once — the page-level strip
+// that decides which day is loaded, and the one inside an open meal that moves
+// that meal to another day — so each needs its own `layoutId`, or the selected
+// highlight would try to fly from one strip to the other.
 export default function DateSelection({
   entryDate,
   onDateChange,
   weekStartsOn = 0,
   showWeekNav = false,
   compact = false,
+  layoutId = "day-highlight",
 }) {
   const days = weekOf(entryDate, weekStartsOn);
-
-  const pillLayout = compact
-    ? { width: 46, flex: "none", padding: "7px 0" }
-    : { flex: 1, minWidth: 44, maxWidth: 68, padding: "9px 0" };
+  const today = todayISO();
+  const navClassName = `btn btn-icon btn-quiet${compact ? " btn-sm" : ""}`;
+  const iconSize = compact ? 14 : 16;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--space-2)",
-        flex: compact ? "none" : 1,
-        minWidth: compact ? 0 : 340,
-      }}
-    >
+    <div className="daystrip" data-compact={compact}>
       {showWeekNav && (
         <button
           type="button"
-          onClick={() => onDateChange(shiftISO(entryDate, -7))}
-          className="btn btn-icon btn-secondary"
+          className={navClassName}
           aria-label="Previous week"
-          style={{ flex: "none" }}
+          onClick={() => onDateChange(shiftISO(entryDate, -7))}
         >
-          ‹
+          <ChevronLeftIcon size={iconSize} />
         </button>
       )}
 
-      <div
-        data-daystrip
-        style={{
-          display: "flex",
-          gap: compact ? 4 : 6,
-          flex: 1,
-          flexWrap: compact ? "wrap" : "nowrap",
-          justifyContent: compact ? "flex-start" : "space-between",
-        }}
-      >
+      <div className="daystrip-days">
         {days.map((date) => {
           const dateString = iso(date);
           const isSelected = dateString === entryDate;
@@ -57,43 +43,16 @@ export default function DateSelection({
             <button
               type="button"
               key={dateString}
+              className="day"
+              data-selected={isSelected}
+              data-today={dateString === today}
+              aria-label={date.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              aria-pressed={isSelected}
               onClick={() => onDateChange(dateString)}
-              aria-label={date.toDateString()}
-              aria-current={isSelected ? "date" : undefined}
-              style={{
-                ...pillLayout,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 1,
-                border: `1px solid ${isSelected ? "var(--color-accent)" : "var(--color-divider)"}`,
-                borderRadius: 999,
-                cursor: "pointer",
-                background: isSelected ? "var(--color-accent)" : "transparent",
-                color: isSelected ? "var(--color-bg)" : "var(--color-text)",
-                fontFamily: "var(--font-body)",
-                transition: "background 160ms ease, border-color 160ms ease",
-              }}
             >
-              <span
-                style={{
-                  fontSize: 10,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  opacity: 0.7,
-                }}
-              >
-                {dayLabels[date.getDay()]}
-              </span>
-              <span
-                style={{
-                  fontSize: compact ? 13 : 14,
-                  fontWeight: 600,
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {date.getDate()}
-              </span>
+              {isSelected && <motion.span layoutId={layoutId} className="day-highlight" transition={LAYOUT_SPRING} />}
+              <span className="day-letter">{dayLabels[date.getDay()]}</span>
+              <span className="day-num">{date.getDate()}</span>
             </button>
           );
         })}
@@ -102,12 +61,11 @@ export default function DateSelection({
       {showWeekNav && (
         <button
           type="button"
-          onClick={() => onDateChange(shiftISO(entryDate, 7))}
-          className="btn btn-icon btn-secondary"
+          className={navClassName}
           aria-label="Next week"
-          style={{ flex: "none" }}
+          onClick={() => onDateChange(shiftISO(entryDate, 7))}
         >
-          ›
+          <ChevronRightIcon size={iconSize} />
         </button>
       )}
     </div>

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main, mvp]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    # A real Postgres 16, same as local, so the Flyway migrations and the
+    # repository tests run against the database the app actually uses.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: caltracker_app
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: caltracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U caltracker_app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_PASSWORD: ci-only-password
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "26"
+          cache: maven
+
+      - name: Test
+        run: ./mvnw -B verify
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - name: Build
+        run: npm run build
